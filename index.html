@@ -1,12 +1,118 @@
 <!DOCTYPE html>
 <html lang="lt">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mano GitHub Puslapis</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sporto Statymų Analizė Automatiškai</title>
+<style>
+body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f2f5; color:#333; }
+header { background:#007bff; color:#fff; padding:20px; text-align:center; }
+main { padding:20px; max-width:1200px; margin:0 auto; }
+h1,h2 { margin-bottom:10px; }
+table { width:100%; border-collapse:collapse; margin-top:20px; }
+th, td { border:1px solid #ddd; padding:10px; text-align:center; }
+th { background:#007bff; color:#fff; }
+tr:nth-child(even){ background:#f9f9f9; }
+.chart-container { margin-top:40px; text-align:center; }
+</style>
 </head>
 <body>
-    <h1>Sveikas atvykęs į mano puslapį!</h1>
-    <p>Šis puslapis veikia per GitHub Pages.</p>
+<header>
+<h1>Sporto Statymų Analizė</h1>
+<p>Automatiniai duomenys: futbolas, krepšinis, tenisas</p>
+</header>
+<main>
+<h2>TOP 10 statymų pagal pelną</h2>
+<table id="top10-table">
+<thead>
+<tr>
+<th>Data</th><th>Sportas</th><th>Lygos</th><th>Komandos</th><th>Pasirinkimas</th><th>Koeficientas</th><th>Pelnas</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<div class="chart-container">
+<h2>Pelnų grafikas</h2>
+<canvas id="profitChart" width="1000" height="400"></canvas>
+</div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+// ---- CONFIG ----
+const SPORTS = ['soccer', 'basketball', 'tennis'];
+const REGIONS = 'eu';
+const MARKETS = 'h2h';
+
+// Odds API key per Vercel Environment Variable
+const API_KEY = import.meta.env.VITE_ODDS_API_KEY || '';
+
+// Funkcija traukti duomenis iš Odds API
+async function fetchOdds(sport) {
+    const url = `https://api.the-odds-api.com/v4/sports/${sport}/odds/?apiKey=${API_KEY}&regions=${REGIONS}&markets=${MARKETS}`;
+    const response = await fetch(url);
+    if(!response.ok){ console.error('Klaida gaunant', sport); return []; }
+    const data = await response.json();
+    return data;
+}
+
+// Funkcija apdoroti ir rodyti TOP 10
+async function displayTop10() {
+    let allBets = [];
+    for(const sport of SPORTS){
+        const events = await fetchOdds(sport);
+        events.forEach(ev=>{
+            if(ev.bookmakers && ev.bookmakers.length>0){
+                const bookmaker = ev.bookmakers[0];
+                bookmaker.markets.forEach(market=>{
+                    market.outcomes.forEach(outcome=>{
+                        allBets.push({
+                            date: ev.commence_time.split('T')[0],
+                            sport: sport,
+                            league: ev.league,
+                            teams: ev.home_team + ' vs ' + ev.away_team,
+                            choice: outcome.name,
+                            odds: outcome.price,
+                            profit: Math.round((outcome.price-1)*100) // demo pelnas
+                        });
+                    });
+                });
+            }
+        });
+    }
+
+    const top10 = allBets.sort((a,b)=>b.profit-a.profit).slice(0,10);
+
+    const tableBody = document.querySelector('#top10-table tbody');
+    tableBody.innerHTML = '';
+    top10.forEach(item=>{
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${item.date}</td><td>${item.sport}</td><td>${item.league}</td><td>${item.teams}</td><td>${item.choice}</td><td>${item.odds}</td><td>${item.profit}</td>`;
+        tableBody.appendChild(row);
+    });
+
+    // Chart.js grafikas
+    const ctx = document.getElementById('profitChart').getContext('2d');
+    new Chart(ctx,{
+        type:'line',
+        data:{
+            labels:top10.map(d=>d.date+'-'+d.sport),
+            datasets:[{
+                label:'Pelnas',
+                data:top10.map(d=>d.profit),
+                borderColor:'#007bff',
+                backgroundColor:'rgba(0,123,255,0.2)',
+                fill:true,
+                tension:0.3
+            }]
+        },
+        options:{responsive:true, plugins:{legend:{display:true}, title:{display:true,text:'TOP 10 Pelnų kreivė'}}, scales:{y:{beginAtZero:true}}}
+    });
+}
+
+// Paleidimas
+displayTop10();
+</script>
 </body>
 </html>
