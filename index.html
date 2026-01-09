@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Profesionalus Sporto Dashboard</title>
+<title>Sporto Statymo Dashboard su Prognozėmis</title>
 <style>
 body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f2f5; color:#333; }
 header { background:#007bff; color:#fff; padding:20px; text-align:center; }
@@ -25,8 +25,8 @@ select, input { padding:8px; font-size:16px; border-radius:5px; border:1px solid
 </head>
 <body>
 <header>
-<h1>Profesionalus Sporto Dashboard</h1>
-<p>Demo duomenys su ikonėlėmis, animacijomis ir gradientais</p>
+<h1>Sporto Statymo Dashboard su Prognozėmis</h1>
+<p>Demo su tikromis komandomis, rezultatais ir prognozėmis</p>
 </header>
 <main>
 <div class="filters">
@@ -38,7 +38,7 @@ select, input { padding:8px; font-size:16px; border-radius:5px; border:1px solid
 <div class="cards-container" id="cards-container"></div>
 
 <div class="chart-container">
-<h2>TOP 10 pagal rezultatų skirtumą</h2>
+<h2>TOP 10 pagal prognozuojamą rezultatų skirtumą</h2>
 <canvas id="resultChart" width="1000" height="400"></canvas>
 </div>
 </main>
@@ -75,109 +75,123 @@ const demoSports = [
 let allMatches = [];
 let leaguesBySport = {};
 
-// --- Init sportų select ---
-function initSports(){
-    const sportSelect = document.getElementById('sport-select');
-    demoSports.forEach(s=>{
-        const option = document.createElement('option');
-        option.value = s.sport;
-        option.textContent = s.display;
-        sportSelect.appendChild(option);
-        leaguesBySport[s.sport] = s.leagues;
-        s.leagues.forEach(l=>{
-            l.matches.forEach(m=>{
-                const homeScore = parseInt(m.score.split('-')[0]);
-                const awayScore = parseInt(m.score.split('-')[1]);
-                allMatches.push({
-                    sport:s.display,
-                    icon:s.icon,
-                    league:l.name,
-                    date:m.date,
-                    teams:m.home+' vs '+m.away,
-                    score:m.score,
-                    diff: Math.abs(homeScore-awayScore),
-                    details:'Demo rungtynių informacija'
-                });
-            });
-        });
-    });
-    updateLeagueSelect();
-    displayFiltered();
+// --- Prognozių funkcijos ---
+function calculateStats(team, sport) {
+  const matches = allMatches.filter(m =>
+    m.sport === sport && (m.home === team || m.away === team)
+  );
+
+  let wins = 0, goalsFor = 0, goalsAgainst = 0;
+  matches.forEach(m=>{
+    const [homeScore, awayScore] = m.score.split('-').map(Number);
+    if(m.home===team){ goalsFor+=homeScore; goalsAgainst+=awayScore; if(homeScore>awayScore) wins++; }
+    else { goalsFor+=awayScore; goalsAgainst+=homeScore; if(awayScore>homeScore) wins++; }
+  });
+
+  const winRate = matches.length ? wins / matches.length : 0;
+  const avgFor = matches.length ? goalsFor / matches.length : 0;
+  const avgAgainst = matches.length ? goalsAgainst / matches.length : 0;
+  return {winRate, avgFor, avgAgainst};
 }
 
-// --- Filtravimas ---
-function updateLeagueSelect(){
-    const sport = document.getElementById('sport-select').value;
-    const leagueSelect = document.getElementById('league-select');
-    leagueSelect.innerHTML = '<option value="">-- Visi lygos --</option>';
-    if(sport && leaguesBySport[sport]){
-        leaguesBySport[sport].forEach(l=>{
-            const opt = document.createElement('option');
-            opt.value = l.name;
-            opt.textContent = l.name;
-            leagueSelect.appendChild(opt);
+function predictMatch(homeTeam, awayTeam, sport) {
+  const homeStats = calculateStats(homeTeam, sport);
+  const awayStats = calculateStats(awayTeam, sport);
+
+  const homeScore = homeStats.avgFor*0.6 + awayStats.avgAgainst*0.4;
+  const awayScore = awayStats.avgFor*0.6 + homeStats.avgAgainst*0.4;
+  let winner = homeScore > awayScore ? homeTeam : awayTeam;
+  if(Math.abs(homeScore-awayScore)<0.5) winner = 'Lygiiosios';
+  return {
+    predictedHomeScore: Math.round(homeScore),
+    predictedAwayScore: Math.round(awayScore),
+    predictedWinner: winner
+  };
+}
+
+// --- Init sportų select ir masyvų ---
+function initSports(){
+  const sportSelect = document.getElementById('sport-select');
+  demoSports.forEach(s=>{
+    const option=document.createElement('option'); option.value=s.sport; option.textContent=s.display; sportSelect.appendChild(option);
+    leaguesBySport[s.sport]=s.leagues;
+    s.leagues.forEach(l=>{
+      l.matches.forEach(m=>{
+        const homeScore = parseInt(m.score.split('-')[0]);
+        const awayScore = parseInt(m.score.split('-')[1]);
+        const pred = predictMatch(m.home, m.away, s.display);
+        allMatches.push({
+          sport:s.display, icon:s.icon, league:l.name, date:m.date,
+          teams:m.home+' vs '+m.away, score:m.score, diff:Math.abs(homeScore-awayScore),
+          predictedWinner: pred.predictedWinner,
+          predictedScore: pred.predictedHomeScore+'-'+pred.predictedAwayScore,
+          details:'Demo rungtynių informacija su prognoze'
         });
-    }
+      });
+    });
+  });
+  updateLeagueSelect(); displayFiltered();
+}
+
+// --- Filtravimas ir atvaizdavimas ---
+function updateLeagueSelect(){
+  const sport=document.getElementById('sport-select').value;
+  const leagueSelect=document.getElementById('league-select');
+  leagueSelect.innerHTML='<option value="">-- Visi lygos --</option>';
+  if(sport && leaguesBySport[sport]){
+    leaguesBySport[sport].forEach(l=>{
+      const opt=document.createElement('option'); opt.value=l.name; opt.textContent=l.name; leagueSelect.appendChild(opt);
+    });
+  }
 }
 
 function displayFiltered(){
-    const sportFilter = document.getElementById('sport-select').value;
-    const leagueFilter = document.getElementById('league-select').value;
-    const dateFilter = document.getElementById('date-filter').value;
+  const sportFilter=document.getElementById('sport-select').value;
+  const leagueFilter=document.getElementById('league-select').value;
+  const dateFilter=document.getElementById('date-filter').value;
 
-    let filtered = allMatches.slice();
-    if(sportFilter) filtered = filtered.filter(m=>m.sport===demoSports.find(d=>d.sport===sportFilter).display);
-    if(leagueFilter) filtered = filtered.filter(m=>m.league===leagueFilter);
-    if(dateFilter) filtered = filtered.filter(m=>m.date===dateFilter);
+  let filtered = allMatches.slice();
+  if(sportFilter) filtered=filtered.filter(m=>m.sport===demoSports.find(d=>d.sport===sportFilter).display);
+  if(leagueFilter) filtered=filtered.filter(m=>m.league===leagueFilter);
+  if(dateFilter) filtered=filtered.filter(m=>m.date===dateFilter);
 
-    filtered.sort((a,b)=>b.diff-a.diff);
+  filtered.sort((a,b)=>b.diff-a.diff);
 
-    const cardsContainer = document.getElementById('cards-container');
-    cardsContainer.innerHTML = '';
-    filtered.forEach(m=>{
-        let diffClass = m.diff <= 2 ? 'low' : m.diff <=5 ? 'medium' : 'high';
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `<h3>${m.icon} ${m.teams}</h3>
-            <p><strong>Data:</strong> ${m.date}</p>
-            <p><strong>Sportas:</strong> ${m.sport}</p>
-            <p><strong>Lyga:</strong> ${m.league}</p>
-            <p><strong>Rezultatas:</strong> ${m.score}</p>
-            <p><strong>Skirtumas:</strong> <span class="diff ${diffClass}">${m.diff}</span></p>
-            <div class="card-details">${m.details}</div>`;
-        card.addEventListener('click', ()=> {
-            const details = card.querySelector('.card-details');
-            details.style.display = details.style.display==='none'?'block':'none';
-        });
-        cardsContainer.appendChild(card);
-    });
+  const cardsContainer=document.getElementById('cards-container'); cardsContainer.innerHTML='';
+  filtered.forEach(m=>{
+    let diffClass=m.diff<=2?'low':m.diff<=5?'medium':'high';
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<h3>${m.icon} ${m.teams}</h3>
+      <p><strong>Data:</strong> ${m.date}</p>
+      <p><strong>Sportas:</strong> ${m.sport}</p>
+      <p><strong>Lyga:</strong> ${m.league}</p>
+      <p><strong>Rezultatas:</strong> ${m.score}</p>
+      <p><strong>Skirtumas:</strong> <span class="diff ${diffClass}">${m.diff}</span></p>
+      <p><strong>Prognozė:</strong> ${m.predictedScore} | Nugalėtojas: ${m.predictedWinner}</p>
+      <div class="card-details">${m.details}</div>`;
+    card.addEventListener('click', ()=>{ const details=card.querySelector('.card-details'); details.style.display=details.style.display==='none'?'block':'none'; });
+    cardsContainer.appendChild(card);
+  });
 
-    const top10 = filtered.slice(0,10);
-    const ctx = document.getElementById('resultChart').getContext('2d');
-    if(window.resultChart) window.resultChart.destroy();
-    window.resultChart = new Chart(ctx,{
-        type:'bar',
-        data:{
-            labels: top10.map(d=>d.date+'-'+d.sport),
-            datasets:[{
-                label:'Rezultatų skirtumas',
-                data: top10.map(d=>d.diff),
-                backgroundColor:'rgba(0,123,255,0.5)',
-                borderColor:'#007bff',
-                borderWidth:1
-            }]
-        },
-        options:{responsive:true, plugins:{legend:{display:true}, title:{display:true,text:'TOP 10 Rezultatų Skirtumų'}}, scales:{y:{beginAtZero:true}}}
-    });
+  const top10 = filtered.slice(0,10);
+  const ctx = document.getElementById('resultChart').getContext('2d');
+  if(window.resultChart) window.resultChart.destroy();
+  window.resultChart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:top10.map(d=>d.date+'-'+d.sport),
+      datasets:[{label:'Rezultatų skirtumas',data:top10.map(d=>d.diff),backgroundColor:'rgba(0,123,255,0.5)',borderColor:'#007bff',borderWidth:1}]
+    },
+    options:{responsive:true,plugins:{legend:{display:true},title:{display:true,text:'TOP 10 Rezultatų Skirtumų'}},scales:{y:{beginAtZero:true}}}
+  });
 }
 
-document.getElementById('sport-select').addEventListener('change', ()=>{
-    updateLeagueSelect();
-    displayFiltered();
-});
-document.getElementById('league-select').addEventListener('change', displayFiltered);
-document.getElementById('date-filter').addEventListener('change', displayFiltered);
+// --- Event listeners ---
+document.getElementById('sport-select').addEventListener('change',()=>{updateLeagueSelect(); displayFiltered();});
+document.getElementById('league-select').addEventListener('change',displayFiltered);
+document.getElementById('date-filter').addEventListener('change',displayFiltered);
 
+// --- Init ---
 initSports();
 </script>
 </body>
