@@ -2,7 +2,7 @@
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
-<title>LKL Statymų Skaičiuoklė</title>
+<title>LKL Statymų Analizė (Vizualus)</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
@@ -11,112 +11,169 @@
 body{font-family:Arial;background:var(--bg);color:var(--text);padding:15px}
 h1{text-align:center}
 .card{background:var(--card);padding:15px;border-radius:10px;margin-bottom:15px}
-input,select,button{width:100%;padding:10px;margin-bottom:8px}
+select,input,button{width:100%;padding:10px;margin-bottom:8px}
 button{background:#333;color:#fff;border:none;border-radius:6px}
-table{width:100%;border-collapse:collapse;font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:13px;margin-top:10px}
 th,td{border:1px solid #666;padding:5px;text-align:center}
 .best{background:limegreen;color:#000;font-weight:bold}
 .delete{color:red;cursor:pointer}
-small{opacity:.7}
+canvas{margin-top:15px;}
 </style>
 </head>
 <body>
 
-<h1>🏀 LKL Statymų Skaičiuoklė</h1>
+<h1>🏀 LKL Statymų Analizė su Grafiku</h1>
 <button onclick="toggleDark()">🌙 Dark mode</button>
 
 <div class="card">
-<h3>➕ Įvesk ateinančias rungtynes</h3>
+<h3>➕ Įvesk rungtynes</h3>
 <form id="matchForm">
-<input id="league" placeholder="Lyga (pvz. LKL)" required>
-<input id="team" placeholder="Komanda" required>
-<input id="odds" type="number" step="0.01" placeholder="Koeficientas" required>
-<input id="prob" type="number" step="0.01" placeholder="Tavo tikimybė (0–1)" required>
+<select id="home" required></select>
+<select id="away" required></select>
+<input id="overLine" type="number" step="0.1" placeholder="Over/Under linija (pvz. 95)" required>
 <input id="stake" type="number" placeholder="Statymas €" required>
 <button type="submit">➕ Pridėti rungtynes</button>
 </form>
 </div>
 
 <div class="card">
-<h3>📊 Rungtynės ir rekomenduojamas statymas</h3>
+<h3>📊 Rungtynės ir top 3 rekomendacijos</h3>
 <table>
 <thead>
 <tr>
-<th>Lyga</th><th>Komanda</th><th>Koef.</th><th>Stake</th><th>Value</th><th>Kelly €</th><th>❌</th>
+<th>Home</th><th>Away</th><th>Over/Under</th><th>Stake</th><th>Value</th><th>Kelly €</th><th>Prognozė</th><th>❌</th>
 </tr>
 </thead>
 <tbody id="matches"></tbody>
 </table>
 </div>
 
-<div class="card" id="bestBetCard"></div>
+<div class="card" id="bestBetsCard"></div>
+
+<div class="card">
+<h3>📊 Prognozuojamų taškų grafikas</h3>
+<canvas id="scoreChart" width="400" height="200"></canvas>
+</div>
 
 <script>
-let matches = JSON.parse(localStorage.getItem("matches")) || [];
-let dark = localStorage.getItem("dark") === "true";
+// LKL komandos
+const teams = ["Žalgiris","Rytas","Lietkabelis","Neptūnas","Juventus","Šiauliai","Nevėžis","Wolves","Pieno žvaigždės","Dzūkija"];
+
+// Paskutinių 15 rungtynių rezultatai
+const history = {
+"Žalgiris":[112,110,108,105,102,100,101,99,97,96,95,102,104,106,108],
+"Rytas":[85,88,87,90,84,82,86,88,89,85,83,87,90,92,88],
+"Lietkabelis":[95,97,92,90,91,93,96,94,95,97,92,91,93,95,98],
+"Neptūnas":[78,80,82,79,81,83,80,82,85,84,80,82,83,81,84],
+"Juventus":[88,85,87,90,86,88,89,87,85,86,88,90,87,85,89],
+"Šiauliai":[99,101,97,95,96,98,100,97,96,95,98,99,100,97,95],
+"Nevėžis":[85,82,84,86,83,85,84,86,87,84,85,83,86,84,85],
+"Wolves":[90,92,91,89,88,90,92,91,89,90,92,91,88,90,92],
+"Pieno žvaigždės":[80,82,81,83,85,82,84,80,81,83,82,84,81,83,85],
+"Dzūkija":[78,76,80,79,77,78,80,81,79,78,77,79,80,78,79]
+};
+
+// Dark mode
+let dark=localStorage.getItem("dark")==="true";
 if(dark) document.body.classList.add("dark");
+function toggleDark(){document.body.classList.toggle("dark");localStorage.setItem("dark",document.body.classList.contains("dark"));}
 
-function toggleDark(){
-  document.body.classList.toggle("dark");
-  localStorage.setItem("dark",document.body.classList.contains("dark"));
-}
+// Matches storage
+let matches = JSON.parse(localStorage.getItem("matches")) || [];
 
+// Helper functions
+function avg(arr){return arr.reduce((a,b)=>a+b,0)/arr.length;}
 function valueBet(p,o){return p*o-1;}
-function kelly(p,o,bank=100){let k=((p*(o-1)-(1-p))/(o-1));return k>0?(k*bank).toFixed(2):0;}
-function profit(b){return b.result==="win"?b.stake*b.odds-b.stake:-b.stake;}
-
-function calculateBest(matches){
-  if(!matches.length) return null;
-  let best = matches[0];
-  matches.forEach(m => {
-    m.value = valueBet(m.prob,m.odds);
-    m.kelly = parseFloat(kelly(m.prob,m.odds));
-    if(m.value > best.value) best = m;
-  });
-  return best;
+function kelly(p,o,stake){let k=((p*(o-1)-(1-p))/(o-1));return k>0?(k*stake).toFixed(2):0;}
+function calcProbs(home,away,line){
+  const homeScores = history[home];
+  const awayScores = history[away];
+  const homeAvg=avg(homeScores);
+  const awayAvg=avg(awayScores);
+  const diff=homeAvg-awayAvg;
+  const homeWinProb=Math.min(Math.max((homeScores.filter(s=>s>awayAvg).length)/homeScores.length,0.05),0.95);
+  const awayWinProb=1-homeWinProb;
+  const overProbHome=Math.min(Math.max(homeScores.filter(s=>s>line).length/homeScores.length,0.05),0.95);
+  const underProbHome=1-overProbHome;
+  const overProbAway=Math.min(Math.max(awayScores.filter(s=>s>line).length/awayScores.length,0.05),0.95);
+  const underProbAway=1-overProbAway;
+  return {homeAvg,awayAvg,diff,homeWinProb,awayWinProb,overProbHome,underProbHome,overProbAway,underProbAway};
 }
 
+// Render selects
+const homeSel=document.getElementById("home");
+const awaySel=document.getElementById("away");
+teams.forEach(t=>{homeSel.innerHTML+=`<option>${t}</option>`;awaySel.innerHTML+=`<option>${t}</option>`});
+
+// Chart.js setup
+let chart=null;
+function updateChart(home,away,line){
+  const probs=calcProbs(home,away,line);
+  const ctx=document.getElementById("scoreChart").getContext('2d');
+  if(chart) chart.destroy();
+  chart=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:[home,away],
+      datasets:[
+        {label:'Numatomi taškai',data:[probs.homeAvg,probs.awayAvg],backgroundColor:['blue','red']},
+        {label:'Over/Under linija',data:[line,line],type:'line',borderColor:'green',borderWidth:2,fill:false}
+      ]
+    },
+    options:{responsive:true,plugins:{legend:{position:'top'}}}
+  });
+}
+
+// Render table
 function render(){
-  const tbody = document.getElementById("matches");
+  const tbody=document.getElementById("matches");
   tbody.innerHTML="";
   matches.forEach((m,i)=>{
-    let row = document.createElement("tr");
-    if(calculateBest(matches)===m) row.classList.add("best");
-    row.innerHTML=`<td>${m.league}</td>
-    <td>${m.team}</td>
-    <td>${m.odds}</td>
-    <td>${m.stake}</td>
-    <td>${m.value.toFixed(2)}</td>
-    <td>${m.kelly}</td>
+    const probs=calcProbs(m.home,m.away,m.overLine);
+    m.value=valueBet(probs.homeWinProb, m.odds || 2);
+    m.kelly=parseFloat(kelly(probs.homeWinProb,m.odds || 2,m.stake));
+    m.prog=`${(probs.homeWinProb*100|0)}% ${m.home} laimės (~${probs.diff.toFixed(1)} skirt.), Over H:${(probs.overProbHome*100|0)}% / Over A:${(probs.overProbAway*100|0)}%`;
+    const row=document.createElement("tr");
+    row.innerHTML=`<td>${m.home}</td><td>${m.away}</td><td>${m.overLine}</td><td>${m.stake}</td>
+    <td>${m.value.toFixed(2)}</td><td>${m.kelly}</td><td>${m.prog}</td>
     <td class="delete" onclick="deleteMatch(${i})">✖</td>`;
     tbody.appendChild(row);
   });
 
-  const best = calculateBest(matches);
-  const bestCard = document.getElementById("bestBetCard");
-  if(best){
-    bestCard.innerHTML=`<b>🎯 Rekomenduojamas statymas:</b> ${best.team} | Lyga: ${best.league} | Koef.: ${best.odds} | Value: ${best.value.toFixed(2)} | Kelly: ${best.kelly} €`;
-  } else {
-    bestCard.innerHTML="";
+  // Top 3 rekomendacijos
+  const bestBetsCard=document.getElementById("bestBetsCard");
+  const sorted=matches.slice().sort((a,b)=>b.value-a.value).slice(0,3);
+  let html="<b>🎯 Top 3 rekomendacijos:</b><br>";
+  sorted.forEach((m,j)=>{
+    const probs=calcProbs(m.home,m.away,m.overLine);
+    html+=`${j+1}. ${m.home} vs ${m.away} | Value: ${m.value.toFixed(2)} | Kelly: ${m.kelly} € | Prognozė: ${(probs.homeWinProb*100|0)}% ${m.home} laimės, skirt.: ${probs.diff.toFixed(1)}, Over H:${(probs.overProbHome*100|0)}% / Over A:${(probs.overProbAway*100|0)}%<br>`;
+  });
+  bestBetsCard.innerHTML=html;
+
+  // Update chart for last match added
+  if(matches.length>0){
+    const last=matches[matches.length-1];
+    updateChart(last.home,last.away,last.overLine);
   }
+
   localStorage.setItem("matches",JSON.stringify(matches));
 }
 
+// Delete
 function deleteMatch(i){matches.splice(i,1);render();}
 
-document.getElementById("matchForm").onsubmit = e=>{
+// Form submit
+document.getElementById("matchForm").onsubmit=e=>{
   e.preventDefault();
-  matches.push({
-    league:league.value,
-    team:team.value,
-    odds:+odds.value,
-    prob:+prob.value,
-    stake:+stake.value
-  });
+  const home=homeSel.value; const away=awaySel.value;
+  const overLine=parseFloat(document.getElementById("overLine").value);
+  const stake=parseFloat(document.getElementById("stake").value);
+  matches.push({home,away,overLine,stake,odds:2});
   e.target.reset();
   render();
 }
 
+// Initial render
 render();
 </script>
 
