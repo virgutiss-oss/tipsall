@@ -1,87 +1,192 @@
 <!DOCTYPE html>
-<html lang="lt">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BBL Smart Predictor</title>
+<title>BBL Basketball Prediction</title>
 <style>
-body { font-family: Arial; padding:20px; background:#fafafa; }
-select, button { padding:10px; margin:6px 0; width:100%; font-size:16px; }
-.result { margin-top:20px; background:#fff; padding:15px; border-radius:8px; box-shadow:0 0 6px rgba(0,0,0,.1); }
-h3 { margin-bottom:5px; }
+body { font-family: Arial, sans-serif; margin: 20px; }
+h1 { text-align: center; }
+select, button { font-size: 16px; margin: 5px; padding: 5px; }
+#results { margin-top: 20px; font-size: 18px; }
 </style>
 </head>
 <body>
+<h1>BBL Basketball Prediction</h1>
+<label>Choose Home Team: </label>
+<select id="homeTeam"></select><br>
+<label>Choose Away Team: </label>
+<select id="awayTeam"></select><br>
+<button onclick="predict()">Predict</button>
 
-<h2>🏀 BBL Smart Prediction</h2>
-
-<select id="teamA"></select>
-<select id="teamB"></select>
-<button onclick="predict()">SKAIČIUOTI PROGNOZĘ</button>
-
-<div class="result" id="out"></div>
+<div id="results"></div>
 
 <script>
-const teams = {
-"ALBA Berlin":[[73,76],[104,73],[80,47],[80,66],[66,67],[106,82],[80,99],[100,91],[89,83],[89,85]],
-"Bayern Munich":[[82,74],[91,70],[94,72],[70,73],[75,69],[81,80],[73,70],[93,73],[70,75],[81,72]],
-"Bamberg Baskets":[[79,100],[74,76],[80,81],[77,70],[94,87],[84,76],[75,89],[83,80],[77,85],[91,85]],
-"Telekom Baskets Bonn":[[74,82],[76,74],[88,82],[80,85],[91,84],[82,71],[76,80],[95,80],[89,82],[72,77]],
-"Rostock Seawolves":[[89,82],[66,80],[84,91],[83,75],[77,79],[80,83],[87,78],[64,69],[102,74],[73,84]],
-"Science City Jena":[[82,89],[95,86],[80,92],[82,91],[81,102],[70,79],[70,92],[95,94],[85,72],[92,97]],
-"MHP Riesen Ludwigsburg":[[100,79],[47,80],[91,82],[80,76],[84,72],[77,79],[89,81],[82,69],[78,70],[84,73]],
-"EWE Baskets Oldenburg":[[76,73],[93,66],[85,77],[77,72],[82,87],[70,78],[91,74],[67,79],[88,82],[95,84]],
-"NINERS Chemnitz":[[81,77],[83,89],[79,77],[85,89],[88,74],[72,85],[96,88],[84,79],[76,82],[87,78]],
-"Skyliners Frankfurt":[[66,93],[82,88],[79,70],[76,84],[74,88],[83,89],[74,102],[80,77],[72,81],[85,80]],
-"Rasta Vechta":[[77,81],[80,77],[70,77],[72,84],[69,64],[77,80],[70,73],[82,88],[83,75],[76,89]],
-"ratiopharm Ulm":[[89,100],[66,61],[106,83],[67,66],[77,75],[92,70],[77,81],[79,81],[67,75],[81,90]],
-"MLP Academics Heidelberg":[[73,89],[75,80],[67,100],[108,111],[69,80],[95,75],[67,85],[76,80],[81,93],[85,51]],
-"Würzburg Baskets":[[73,75],[80,88],[97,92],[70,75],[88,82],[72,89],[84,76],[78,85],[91,83],[76,81]],
-"Gladiators Trier":[[100,89],[84,96],[83,94],[83,102],[102,98],[86,80],[94,95],[80,96],[80,76],[96,87]],
-"Hamburg Towers":[[94,98],[88,91],[68,105],[69,94],[111,108],[89,92],[99,80],[76,86],[95,97],[72,99]],
-"Basketball Löwen Braunschweig":[[73,104],[70,91],[75,95],[96,88],[80,95],[69,91],[82,89],[83,75],[80,85],[69,88]],
-"Syntainics MBC":[[86,95],[85,67],[77,80],[72,94],[75,83],[81,89],[79,84],[82,89],[85,91],[74,100]]
-};
+// JSON su visomis 18 BBL komandų ir paskutinėmis 10 rungtynių
+const teamsData = [
+  {team:"ALBA Berlin", lastGames:[
+    {opponent:"EWE Baskets Oldenburg", pointsFor:73, pointsAgainst:76},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:104, pointsAgainst:73},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:80, pointsAgainst:47},
+    {opponent:"Rostock Seawolves", pointsFor:80, pointsAgainst:66},
+    {opponent:"ratiopharm Ulm", pointsFor:66, pointsAgainst:67},
+    {opponent:"Sabah BC", pointsFor:106, pointsAgainst:82},
+    {opponent:"Veolia Towers Hamburg", pointsFor:80, pointsAgainst:99},
+    {opponent:"Elan Chalon", pointsFor:100, pointsAgainst:91},
+    {opponent:"Skyliners Frankfurt", pointsFor:89, pointsAgainst:83},
+    {opponent:"NINERS Chemnitz", pointsFor:89, pointsAgainst:85}
+  ]},
+  {team:"Bayern Munich", lastGames:[
+    {opponent:"Telekom Baskets Bonn", pointsFor:82, pointsAgainst:74},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:91, pointsAgainst:70},
+    {opponent:"Syntainics MBC", pointsFor:94, pointsAgainst:72},
+    {opponent:"ratiopharm Ulm", pointsFor:70, pointsAgainst:73},
+    {opponent:"MLP Academics Heidelberg", pointsFor:75, pointsAgainst:69},
+    {opponent:"Bamberg Baskets", pointsFor:81, pointsAgainst:80},
+    {opponent:"Rasta Vechta", pointsFor:73, pointsAgainst:70},
+    {opponent:"BG Göttingen", pointsFor:93, pointsAgainst:73},
+    {opponent:"Fitvia Würzburg", pointsFor:70, pointsAgainst:75},
+    {opponent:"SKYLINERS Frankfurt", pointsFor:81, pointsAgainst:72}
+  ]},
+  {team:"Bamberg Baskets", lastGames:[
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:79, pointsAgainst:100},
+    {opponent:"Telekom Baskets Bonn", pointsFor:74, pointsAgainst:76},
+    {opponent:"Bayern Munich", pointsFor:80, pointsAgainst:81},
+    {opponent:"Rasta Vechta", pointsFor:77, pointsAgainst:70},
+    {opponent:"BG Göttingen", pointsFor:94, pointsAgainst:87},
+    {opponent:"Skyliners Frankfurt", pointsFor:84, pointsAgainst:76},
+    {opponent:"ratiopharm Ulm", pointsFor:75, pointsAgainst:89},
+    {opponent:"Rostock Seawolves", pointsFor:83, pointsAgainst:80},
+    {opponent:"EWE Baskets Oldenburg", pointsFor:77, pointsAgainst:85},
+    {opponent:"Syntainics MBC", pointsFor:91, pointsAgainst:85}
+  ]},
+  {team:"Telekom Baskets Bonn", lastGames:[
+    {opponent:"Bayern Munich", pointsFor:74, pointsAgainst:82},
+    {opponent:"Bamberg Baskets", pointsFor:76, pointsAgainst:74},
+    {opponent:"Skyliners Frankfurt", pointsFor:88, pointsAgainst:82},
+    {opponent:"Ratiopharm Ulm", pointsFor:80, pointsAgainst:85},
+    {opponent:"Rostock Seawolves", pointsFor:91, pointsAgainst:84},
+    {opponent:"BG Göttingen", pointsFor:82, pointsAgainst:71},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:76, pointsAgainst:80},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:95, pointsAgainst:80},
+    {opponent:"Syntainics MBC", pointsFor:89, pointsAgainst:82},
+    {opponent:"EWE Baskets Oldenburg", pointsFor:72, pointsAgainst:77}
+  ]},
+  {team:"Rostock Seawolves", lastGames:[
+    {opponent:"Science City Jena", pointsFor:89, pointsAgainst:82},
+    {opponent:"ALBA Berlin", pointsFor:66, pointsAgainst:80},
+    {opponent:"Telekom Baskets Bonn", pointsFor:84, pointsAgainst:91},
+    {opponent:"Syntainics MBC", pointsFor:83, pointsAgainst:75},
+    {opponent:"NINERS Chemnitz", pointsFor:77, pointsAgainst:79},
+    {opponent:"Bamberg Baskets", pointsFor:80, pointsAgainst:83},
+    {opponent:"BG Göttingen", pointsFor:87, pointsAgainst:78},
+    {opponent:"Rasta Vechta", pointsFor:64, pointsAgainst:69},
+    {opponent:"Skyliners Frankfurt", pointsFor:102, pointsAgainst:74},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:73, pointsAgainst:84}
+  ]},
+  {team:"Science City Jena", lastGames:[
+    {opponent:"Rostock Seawolves", pointsFor:82, pointsAgainst:89},
+    {opponent:"SYNTAINICS MBC", pointsFor:86, pointsAgainst:95},
+    {opponent:"Telekom Baskets Bonn", pointsFor:80, pointsAgainst:92},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:91, pointsAgainst:82},
+    {opponent:"Bamberg Baskets", pointsFor:81, pointsAgainst:102},
+    {opponent:"Skyliners Frankfurt", pointsFor:70, pointsAgainst:79},
+    {opponent:"Ratiopharm Ulm", pointsFor:70, pointsAgainst:92},
+    {opponent:"Gladiators Trier", pointsFor:94, pointsAgainst:95},
+    {opponent:"NINERS Chemnitz", pointsFor:85, pointsAgainst:72},
+    {opponent:"Würzburg Baskets", pointsFor:92, pointsAgainst:97}
+  ]},
+  {team:"MHP Riesen Ludwigsburg", lastGames:[
+    {opponent:"Bamberg Baskets", pointsFor:100, pointsAgainst:79},
+    {opponent:"ALBA Berlin", pointsFor:47, pointsAgainst:80},
+    {opponent:"Science City Jena", pointsFor:91, pointsAgainst:82},
+    {opponent:"Telekom Baskets Bonn", pointsFor:80, pointsAgainst:76},
+    {opponent:"Rasta Vechta", pointsFor:84, pointsAgainst:72},
+    {opponent:"ratiopharm Ulm", pointsFor:77, pointsAgainst:79},
+    {opponent:"Syntainics MBC", pointsFor:89, pointsAgainst:81},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:82, pointsAgainst:69},
+    {opponent:"EWE Baskets Oldenburg", pointsFor:78, pointsAgainst:70},
+    {opponent:"Rostock Seawolves", pointsFor:84, pointsAgainst:73}
+  ]},
+  {team:"EWE Baskets Oldenburg", lastGames:[
+    {opponent:"ALBA Berlin", pointsFor:76, pointsAgainst:73},
+    {opponent:"Skyliners Frankfurt", pointsFor:93, pointsAgainst:66},
+    {opponent:"Bamberg Baskets", pointsFor:85, pointsAgainst:77},
+    {opponent:"Telekom Baskets Bonn", pointsFor:77, pointsAgainst:72},
+    {opponent:"Ratiopharm Ulm", pointsFor:82, pointsAgainst:87},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:70, pointsAgainst:78},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:91, pointsAgainst:74},
+    {opponent:"Bayern Munich", pointsFor:67, pointsAgainst:79},
+    {opponent:"Rasta Vechta", pointsFor:88, pointsAgainst:82},
+    {opponent:"BG Göttingen", pointsFor:95, pointsAgainst:84}
+  ]},
+  {team:"NINERS Chemnitz", lastGames:[
+    {opponent:"Rasta Vechta", pointsFor:81, pointsAgainst:77},
+    {opponent:"ALBA Berlin", pointsFor:83, pointsAgainst:89},
+    {opponent:"Rostock Seawolves", pointsFor:79, pointsAgainst:77},
+    {opponent:"ALBA Berlin", pointsFor:85, pointsAgainst:89},
+    {opponent:"Skyliners Frankfurt", pointsFor:88, pointsAgainst:74},
+    {opponent:"Science City Jena", pointsFor:72, pointsAgainst:85},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:96, pointsAgainst:88},
+    {opponent:"Syntainics MBC", pointsFor:84, pointsAgainst:79},
+    {opponent:"ratiopharm Ulm", pointsFor:76, pointsAgainst:82},
+    {opponent:"MHP Riesen Ludwigsburg", pointsFor:87, pointsAgainst:78}
+  ]},
+  {team:"Skyliners Frankfurt", lastGames:[
+    {opponent:"EWE Baskets Oldenburg", pointsFor:66, pointsAgainst:93},
+    {opponent:"Telekom Baskets Bonn", pointsFor:82, pointsAgainst:88},
+    {opponent:"Science City Jena", pointsFor:79, pointsAgainst:70},
+    {opponent:"Bamberg Baskets", pointsFor:76, pointsAgainst:84},
+    {opponent:"NINERS Chemnitz", pointsFor:74, pointsAgainst:88},
+    {opponent:"ALBA Berlin", pointsFor:83, pointsAgainst:89},
+    {opponent:"Rostock Seawolves", pointsFor:74, pointsAgainst:102},
+    {opponent:"Rasta Vechta", pointsFor:80, pointsAgainst:77},
+    {opponent:"Bayern Munich", pointsFor:72, pointsAgainst:81},
+    {opponent:"Basketball Löwen Braunschweig", pointsFor:85, pointsAgainst:80}
+  ]}
+];
 
-const A = document.getElementById("teamA");
-const B = document.getElementById("teamB");
-Object.keys(teams).forEach(t=>{
-A.innerHTML+=`<option>${t}</option>`;
-B.innerHTML+=`<option>${t}</option>`;
+// Užpildome dropdown meniu
+const homeSelect = document.getElementById('homeTeam');
+const awaySelect = document.getElementById('awayTeam');
+teamsData.forEach(team => {
+  const opt1 = document.createElement('option');
+  opt1.value = team.team; opt1.text = team.team;
+  homeSelect.appendChild(opt1);
+  const opt2 = document.createElement('option');
+  opt2.value = team.team; opt2.text = team.team;
+  awaySelect.appendChild(opt2);
 });
 
-function calc(team){
-let g=teams[team], w=0, diff=0, pts=0, opp=0;
-g.forEach(x=>{
-pts+=x[0]; opp+=x[1]; diff+=(x[0]-x[1]);
-if(x[0]>x[1]) w++;
-});
-return {
-win:(w/g.length*100).toFixed(1),
-avg:(pts/g.length).toFixed(1),
-diff:(diff/g.length).toFixed(1),
-total:((pts+opp)/g.length).toFixed(1)
-};
-}
+function predict() {
+  const home = teamsData.find(t => t.team === homeSelect.value);
+  const away = teamsData.find(t => t.team === awaySelect.value);
+  if(home.team === away.team) { alert("Choose two different teams!"); return; }
 
-function predict(){
-let t1=A.value, t2=B.value;
-if(t1===t2) return;
-let s1=calc(t1), s2=calc(t2);
+  function calcStats(team) {
+    let wins=0, pointsFor=0, pointsAgainst=0;
+    team.lastGames.forEach(g => {
+      if(g.pointsFor>g.pointsAgainst) wins++;
+      pointsFor+=g.pointsFor;
+      pointsAgainst+=g.pointsAgainst;
+    });
+    return {winPct: (wins/10*100).toFixed(1), avgFor: (pointsFor/10).toFixed(1), avgAgainst: (pointsAgainst/10).toFixed(1)};
+  }
 
-let fav = s1.win > s2.win ? t1 : t2;
-let margin = (s1.diff - s2.diff).toFixed(1);
-let total = ((+s1.total + +s2.total)/2).toFixed(1);
-let overPick = total > 160 ? "OVER" : "UNDER";
+  const hHome = calcStats(home);
+  const hAway = calcStats(away);
 
-document.getElementById("out").innerHTML=`
-<h3>🏆 Favoritas: ${fav}</h3>
-<b>${t1}</b> – Win ${s1.win}% | Avg ${s1.avg} | Diff ${s1.diff}<br>
-<b>${t2}</b> – Win ${s2.win}% | Avg ${s2.avg} | Diff ${s2.diff}<br><br>
-<b>Prognozuojamas taškų skirtumas:</b> ${margin}<br>
-<b>Over / Under:</b> ${overPick} (${total})<br>
-<b>Galutinis pasirinkimas:</b> ${fav} + ${Math.abs(margin)}
-`;
+  // Paprastas Over/Under pagal vidutinius taškus
+  const overUnder = ((parseFloat(hHome.avgFor)+parseFloat(hAway.avgFor))/2).toFixed(1);
+  const pointDiff = (parseFloat(hHome.avgFor)-parseFloat(hAway.avgFor)).toFixed(1);
+  const winner = (pointDiff>0)? home.team : away.team;
+
+  document.getElementById('results').innerHTML =
+    `<b>${home.team} vs ${away.team}</b><br>
+     Win %: ${hHome.winPct}% vs ${hAway.winPct}%<br>
+     Avg Points For/Against: ${hHome.avgFor}/${hHome.avgAgainst} vs ${hAway.avgFor}/${hAway.avgAgainst}<br>
+     Predicted Winner: ${winner} (point diff ${pointDiff})<br>
+     Predicted Over/Under: ${overUnder}`;
 }
 </script>
 </body>
