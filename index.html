@@ -2,10 +2,9 @@
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
-<title>Asmeninė statymų analizė</title>
+<title>LKL Statymų Skaičiuoklė</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 :root{--bg:#f2f2f2;--card:#fff;--text:#000}
 .dark{--bg:#121212;--card:#1e1e1e;--text:#fff}
@@ -16,168 +15,109 @@ input,select,button{width:100%;padding:10px;margin-bottom:8px}
 button{background:#333;color:#fff;border:none;border-radius:6px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th,td{border:1px solid #666;padding:5px;text-align:center}
+.best{background:limegreen;color:#000;font-weight:bold}
 .delete{color:red;cursor:pointer}
 small{opacity:.7}
 </style>
 </head>
-
 <body>
 
-<h1>🏀 Statymų analizė</h1>
+<h1>🏀 LKL Statymų Skaičiuoklė</h1>
 <button onclick="toggleDark()">🌙 Dark mode</button>
 
-<!-- ATEINANČIOS VARŽYBOS -->
 <div class="card">
-<h3>📅 Ateinančios varžybos</h3>
+<h3>➕ Įvesk ateinančias rungtynes</h3>
+<form id="matchForm">
+<input id="league" placeholder="Lyga (pvz. LKL)" required>
+<input id="team" placeholder="Komanda" required>
+<input id="odds" type="number" step="0.01" placeholder="Koeficientas" required>
+<input id="prob" type="number" step="0.01" placeholder="Tavo tikimybė (0–1)" required>
+<input id="stake" type="number" placeholder="Statymas €" required>
+<button type="submit">➕ Pridėti rungtynes</button>
+</form>
+</div>
 
-<select id="upLeague"></select>
-<input id="home" placeholder="Namų komanda">
-<input id="away" placeholder="Svečių komanda">
-<input id="date" type="datetime-local">
-<button onclick="addMatch()">➕ Pridėti varžybas</button>
-
+<div class="card">
+<h3>📊 Rungtynės ir rekomenduojamas statymas</h3>
 <table>
 <thead>
-<tr><th>Lyga</th><th>Varžybos</th><th>Data</th><th>🎯</th></tr>
+<tr>
+<th>Lyga</th><th>Komanda</th><th>Koef.</th><th>Stake</th><th>Value</th><th>Kelly €</th><th>❌</th>
+</tr>
 </thead>
 <tbody id="matches"></tbody>
 </table>
 </div>
 
-<!-- STATYMAS -->
-<div class="card">
-<form id="betForm">
-<select id="league" onchange="loadTeams()" required></select>
-<select id="team" required></select>
-<input id="odds" type="number" step="0.01" placeholder="Koeficientas" required>
-<input id="stake" type="number" placeholder="Statymas €" required>
-<input id="prob" type="number" step="0.01" placeholder="Mano tikimybė (0–1)" required>
-<select id="result">
-<option value="">Rezultatas</option>
-<option value="win">Win</option>
-<option value="loss">Loss</option>
-</select>
-<button type="submit">➕ Pridėti statymą</button>
-</form>
-</div>
-
-<div class="card">
-<table>
-<thead>
-<tr><th>Lyga</th><th>Komanda</th><th>Odds</th><th>Stake</th><th>Value</th><th>P/L</th><th>❌</th></tr>
-</thead>
-<tbody id="bets"></tbody>
-</table>
-</div>
-
-<div class="card" id="stats"></div>
-<div class="card"><canvas id="chart"></canvas></div>
+<div class="card" id="bestBetCard"></div>
 
 <script>
-const leagues={
-"LKL":["Žalgiris","Rytas","Wolves","Lietkabelis","Neptūnas","Juventus","Šiauliai","Nevėžis"],
-"ACB":["Real Madrid","Barcelona","Baskonia","Valencia"],
-"BSL":["Fenerbahçe","Anadolu Efes","Galatasaray"],
-"BBL":["Alba Berlin","Bayern Munich"],
-"LNB":["Monaco","ASVEL","Paris"],
-"NBA":["Boston Celtics","LA Lakers","Golden State Warriors","Denver Nuggets"]
-};
-
-let bets=JSON.parse(localStorage.getItem("bets"))||[];
-let matches=JSON.parse(localStorage.getItem("matches"))||[];
-let dark=localStorage.getItem("dark")==="true";
-if(dark)document.body.classList.add("dark");
+let matches = JSON.parse(localStorage.getItem("matches")) || [];
+let dark = localStorage.getItem("dark") === "true";
+if(dark) document.body.classList.add("dark");
 
 function toggleDark(){
-document.body.classList.toggle("dark");
-localStorage.setItem("dark",document.body.classList.contains("dark"));
+  document.body.classList.toggle("dark");
+  localStorage.setItem("dark",document.body.classList.contains("dark"));
 }
 
-Object.keys(leagues).forEach(l=>{
-league.innerHTML+=`<option>${l}</option>`;
-upLeague.innerHTML+=`<option>${l}</option>`;
-});
+function valueBet(p,o){return p*o-1;}
+function kelly(p,o,bank=100){let k=((p*(o-1)-(1-p))/(o-1));return k>0?(k*bank).toFixed(2):0;}
+function profit(b){return b.result==="win"?b.stake*b.odds-b.stake:-b.stake;}
 
-function loadTeams(){
-team.innerHTML="";
-leagues[league.value].forEach(t=>team.innerHTML+=`<option>${t}</option>`);
-}
-loadTeams();
-
-function addMatch(){
-matches.push({
-league:upLeague.value,
-home:home.value,
-away:away.value,
-date:date.value
-});
-localStorage.setItem("matches",JSON.stringify(matches));
-renderMatches();
+function calculateBest(matches){
+  if(!matches.length) return null;
+  let best = matches[0];
+  matches.forEach(m => {
+    m.value = valueBet(m.prob,m.odds);
+    m.kelly = parseFloat(kelly(m.prob,m.odds));
+    if(m.value > best.value) best = m;
+  });
+  return best;
 }
 
-function renderMatches(){
-matchesEl.innerHTML="";
-matches.forEach((m,i)=>{
-matchesEl.innerHTML+=`
-<tr>
-<td>${m.league}</td>
-<td>${m.home} vs ${m.away}</td>
-<td>${m.date.replace("T"," ")}</td>
-<td><button onclick="quickBet('${m.league}','${m.home}')">STATYTI</button></td>
-</tr>`;
-});
-}
-
-function quickBet(lg,tm){
-league.value=lg;
-loadTeams();
-team.value=tm;
-window.scrollTo({top:document.body.scrollHeight,behavior:"smooth"});
-}
-
-function valueBet(p,o){return p*o-1}
-function profit(b){return b.result==="win"?b.stake*b.odds-b.stake:b.result==="loss"?-b.stake:0}
-
-let chart;
 function render(){
-betsEl.innerHTML="";
-let ts=0,tp=0,b=0,curve=[];
-bets.forEach((x,i)=>{
-ts+=x.stake;tp+=profit(x);b+=profit(x);curve.push(b);
-betsEl.innerHTML+=`
-<tr>
-<td>${x.league}</td><td>${x.team}</td><td>${x.odds}</td>
-<td>${x.stake}</td><td>${valueBet(x.prob,x.odds).toFixed(2)}</td>
-<td>${profit(x).toFixed(2)}</td>
-<td class="delete" onclick="bets.splice(${i},1);render()">✖</td>
-</tr>`;
-});
-stats.innerHTML=`💰 Pelnas: ${tp.toFixed(2)} € | 📈 ROI: ${(ts?(tp/ts*100):0).toFixed(2)}%`;
-if(chart)chart.destroy();
-chart=new Chart(chartEl,{type:"line",data:{labels:curve.map((_,i)=>i+1),datasets:[{data:curve,borderColor:"green"}]},options:{plugins:{legend:{display:false}}}});
-localStorage.setItem("bets",JSON.stringify(bets));
+  const tbody = document.getElementById("matches");
+  tbody.innerHTML="";
+  matches.forEach((m,i)=>{
+    let row = document.createElement("tr");
+    if(calculateBest(matches)===m) row.classList.add("best");
+    row.innerHTML=`<td>${m.league}</td>
+    <td>${m.team}</td>
+    <td>${m.odds}</td>
+    <td>${m.stake}</td>
+    <td>${m.value.toFixed(2)}</td>
+    <td>${m.kelly}</td>
+    <td class="delete" onclick="deleteMatch(${i})">✖</td>`;
+    tbody.appendChild(row);
+  });
+
+  const best = calculateBest(matches);
+  const bestCard = document.getElementById("bestBetCard");
+  if(best){
+    bestCard.innerHTML=`<b>🎯 Rekomenduojamas statymas:</b> ${best.team} | Lyga: ${best.league} | Koef.: ${best.odds} | Value: ${best.value.toFixed(2)} | Kelly: ${best.kelly} €`;
+  } else {
+    bestCard.innerHTML="";
+  }
+  localStorage.setItem("matches",JSON.stringify(matches));
 }
 
-betForm.onsubmit=e=>{
-e.preventDefault();
-bets.push({
-league:league.value,
-team:team.value,
-odds:+odds.value,
-stake:+stake.value,
-prob:+prob.value,
-result:result.value
-});
-betForm.reset();render();
-};
+function deleteMatch(i){matches.splice(i,1);render();}
 
-const betsEl=document.getElementById("bets");
-const stats=document.getElementById("stats");
-const chartEl=document.getElementById("chart");
-const matchesEl=document.getElementById("matches");
+document.getElementById("matchForm").onsubmit = e=>{
+  e.preventDefault();
+  matches.push({
+    league:league.value,
+    team:team.value,
+    odds:+odds.value,
+    prob:+prob.value,
+    stake:+stake.value
+  });
+  e.target.reset();
+  render();
+}
 
 render();
-renderMatches();
 </script>
 
 </body>
