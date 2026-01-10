@@ -4,21 +4,21 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Krepšinio Prognozė LKL + ACB</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; background: #f2f2f2; }
-h1 { text-align: center; }
-label, select, button { display:block; margin:10px 0; width:100%; }
-button { padding:10px; background:#0077cc; color:white; border:none; cursor:pointer; }
-button:hover { background:#005fa3; }
-#result { margin-top:20px; padding:10px; background:#fff; border:1px solid #ddd; }
+body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
+h1 { text-align: center; color: #2a4d69; }
+select, button { padding: 8px; margin: 5px 0; width: 100%; }
+#result { margin-top: 20px; background: #fff; padding: 15px; border: 1px solid #ccc; }
+canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
 </style>
 </head>
 <body>
 
-<h1>Krepšinio Prognozė</h1>
+<h1>Krepšinio Prognozė su Grafiku (LKL + ACB)</h1>
 
 <label>Lyga:</label>
-<select id="league" onchange="populateTeams()">
+<select id="league" onchange="updateTeams()">
   <option value="LKL">LKL</option>
   <option value="ACB">ACB</option>
 </select>
@@ -29,101 +29,127 @@ button:hover { background:#005fa3; }
 <label>Komanda 2:</label>
 <select id="team2"></select>
 
-<button onclick="calculate()">Apskaičiuoti prognozę</button>
+<button onclick="calculate()">Skaičiuoti prognozę</button>
 
 <div id="result"></div>
+<canvas id="chart" width="600" height="400"></canvas>
 
 <script>
-// ------------------ Duomenys ------------------
-
-// LKL komandos
-const LKLTeams = ["Žalgiris Kaunas","Lietuvos Rytas","Neptūnas Klaipėda","Lietkabelis Panevėžys","Šiauliai","Juventus Utenos","Gargždai","Nevežis Kėdainiai","Jonava"];
-
-// ACB komandos (pavyzdinės, realius duomenis reikia įdėti)
-const ACBTeams = ["Real Madrid","Barcelona","Baskonia","Valencia","Bilbao","Joventut","Gran Canaria","Unicaja","Breogán","Manresa","Granada","Murcia","Andorra","Fuenlabrada","Burgos","Tenerife","Zaragoza","Girona"];
-
-// Paskutinių 15 rungtynių pavyzdys
-const last15Matches = {
-  "Žalgiris Kaunas":[112,101,95,108,102,99,110,103,107,104,98,97,105,109,111],
-  "Lietuvos Rytas":[81,85,88,92,89,86,90,87,84,91,83,85,88,86,89],
-  "Neptūnas Klaipėda":[77,85,88,90,84,86,79,87,85,88,90,83,81,86],
-  "Lietkabelis Panevėžys":[89,77,84,91,82,88,85,86,79,83,87,81,90,84,86],
-  // ACB pavyzdžiai
-  "Real Madrid":[105,100,98,102,99,101,97,104,100,101,103,99,105,98,100],
-  "Barcelona":[103,105,100,107,102,106,104,103,101,108,99,102,104,105,100]
+// ————— JSON su paskutinėmis rungtynėmis ir H2H —————
+const data = {
+  "LKL_last10": {
+    "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77},{"date":"2025-12-27","opponent":"Rytas","teamScore":90,"oppScore":81},{"date":"2025-12-21","opponent":"Jonava Hipocredit","teamScore":118,"oppScore":73},{"date":"2025-11-09","opponent":"Nevėžis Kėdainiai","teamScore":94,"oppScore":68}],
+    "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90},{"date":"2025-11-15","opponent":"Neptūnas Klaipėda","teamScore":104,"oppScore":72},{"date":"2025-11-08","opponent":"Jonava Hipocredit","teamScore":105,"oppScore":71}],
+    "Neptūnas Klaipėda":[{"date":"2026-01-04","opponent":"Žalgiris Kaunas","teamScore":77,"oppScore":112},{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103},{"date":"2025-11-15","opponent":"Šiauliai","teamScore":97,"oppScore":90}],
+    "Lietkabelis Panevėžys":[{"date":"2026-01-04","opponent":"Juventus Utenos","teamScore":89,"oppScore":83},{"date":"2025-12-28","opponent":"Nevėžis Kėdainiai","teamScore":69,"oppScore":77},{"date":"2025-11-16","opponent":"Jonava Hipocredit","teamScore":96,"oppScore":85}],
+    "Juventus Utenos":[{"date":"2026-01-04","opponent":"Lietkabelis Panevėžys","teamScore":83,"oppScore":89},{"date":"2025-12-27","opponent":"Gargždai","teamScore":104,"oppScore":78},{"date":"2025-11-23","opponent":"Nevėžis Kėdainiai","teamScore":96,"oppScore":79},{"date":"2025-11-08","opponent":"Lietkabelis Panevėžys","teamScore":97,"oppScore":90}],
+    "Šiauliai":[{"date":"2026-01-03","opponent":"Nevėžis Kėdainiai","teamScore":98,"oppScore":95},{"date":"2025-12-28","opponent":"Neptūnas Klaipėda","teamScore":103,"oppScore":101},{"date":"2025-11-22","opponent":"Gargždai","teamScore":94,"oppScore":83},{"date":"2025-11-15","opponent":"Rytas","teamScore":100,"oppScore":105}],
+    "Nevėžis Kėdainiai":[{"date":"2026-01-03","opponent":"Šiauliai","teamScore":95,"oppScore":98},{"date":"2025-12-28","opponent":"Lietkabelis Panevėžys","teamScore":77,"oppScore":69},{"date":"2025-11-23","opponent":"Juventus Utenos","teamScore":79,"oppScore":96},{"date":"2025-11-08","opponent":"Gargždai","teamScore":74,"oppScore":90}],
+    "Gargždai":[{"date":"2026-01-03","opponent":"Jonava Hipocredit","teamScore":82,"oppScore":75},{"date":"2025-12-27","opponent":"Juventus Utenos","teamScore":78,"oppScore":104},{"date":"2025-11-22","opponent":"Šiauliai","teamScore":83,"oppScore":94},{"date":"2025-11-08","opponent":"Nevėžis Kėdainiai","teamScore":90,"oppScore":74}],
+    "Jonava Hipocredit":[{"date":"2026-01-03","opponent":"Gargždai","teamScore":75,"oppScore":82},{"date":"2025-12-14","opponent":"Nevėžis Kėdainiai","teamScore":85,"oppScore":83},{"date":"2025-12-21","opponent":"Žalgiris Kaunas","teamScore":73,"oppScore":118},{"date":"2025-11-19","opponent":"Šiauliai","teamScore":82,"oppScore":80}]
+  },
+  "LKL_H2H": {
+    "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}],
+    "Neptūnas Klaipėda_Šiauliai":[{"date":"2025-12-28","team1Score":101,"team2Score":103}],
+    "Lietkabelis Panevėžys_Nevėžis Kėdainiai":[{"date":"2025-12-28","team1Score":69,"team2Score":77}],
+    "Juventus Utenos_Gargždai":[{"date":"2025-12-27","team1Score":104,"team2Score":78}],
+    "Gargždai_Jonava Hipocredit":[{"date":"2026-01-03","team1Score":82,"team2Score":75}]
+  },
+  "ACB_last10": {
+    "Real Madrid":[{"date":"2026-01-04","opponent":"Barcelona","teamScore":100,"oppScore":105},{"date":"2025-12-14","opponent":"Girona","teamScore":112,"oppScore":76}],
+    "Barcelona":[{"date":"2026-01-04","opponent":"Real Madrid","teamScore":105,"oppScore":100},{"date":"2025-12-14","opponent":"Manresa","teamScore":89,"oppScore":62}],
+    "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}],
+    "Surne Bilbao Basket":[{"date":"2026-01-02","opponent":"Valencia Basket","teamScore":72,"oppScore":116},{"date":"2025-12-14","opponent":"Forca Lleida","teamScore":93,"oppScore":75}],
+    "Joventut Badalona":[{"date":"2025-12-21","opponent":"Rio Breogán","teamScore":83,"oppScore":75}],
+    "Bàsquet Girona":[{"date":"2025-12-14","opponent":"Forca Lleida","teamScore":103,"oppScore":86}],
+    "UCAM Murcia":[{"date":"2025-12-14","opponent":"Surne Bilbao Basket","teamScore":80,"oppScore":77}],
+    "Casademont Zaragoza":[{"date":"2025-12-21","opponent":"Andorra","teamScore":107,"oppScore":89}]
+  },
+  "ACB_H2H": {
+    "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}],
+    "Valencia Basket_Surne Bilbao Basket":[{"date":"2026-01-02","team1Score":116,"team2Score":72}]
+  }
 };
 
-// H2H pavyzdys (tik keli, visus reikės įvesti tikrus)
-const headToHead = {
-  "Žalgiris Kaunas_Lietuvos Rytas":[
-    {score1:90,score2:81},{score1:79,score2:75},{score1:76,score2:69},{score1:104,score2:98}
-  ],
-  "Real Madrid_Barcelona":[
-    {score1:105,score2:100},{score1:102,score2:99},{score1:98,score2:97},{score1:101,score2:104}
-  ]
-};
-
-// ------------------ Funkcijos ------------------
-
-function populateTeams(){
-  const league = document.getElementById('league').value;
-  const teams = league=="LKL"?LKLTeams:ACBTeams;
-  const sel1=document.getElementById('team1'), sel2=document.getElementById('team2');
-  sel1.innerHTML=""; sel2.innerHTML="";
-  teams.forEach(t=>{
-    let opt1=document.createElement('option'); opt1.value=t; opt1.text=t; sel1.add(opt1);
-    let opt2=document.createElement('option'); opt2.value=t; opt2.text=t; sel2.add(opt2);
+// ————— Dinamiškai užpildyti komandų select —————
+function updateTeams() {
+  const league = document.getElementById("league").value;
+  const teams = league === "LKL" ? Object.keys(data.LKL_last10) : Object.keys(data.ACB_last10);
+  const team1 = document.getElementById("team1");
+  const team2 = document.getElementById("team2");
+  team1.innerHTML = "";
+  team2.innerHTML = "";
+  teams.forEach(t => {
+    team1.innerHTML += `<option value="${t}">${t}</option>`;
+    team2.innerHTML += `<option value="${t}">${t}</option>`;
   });
 }
+updateTeams();
 
-populateTeams(); // pradinė užpildymas
+// ————— Skaičiavimo logika —————
+function calculate() {
+  const league = document.getElementById("league").value;
+  const t1 = document.getElementById("team1").value;
+  const t2 = document.getElementById("team2").value;
+  const last10 = league === "LKL" ? data.LKL_last10 : data.ACB_last10;
+  const h2h = league === "LKL" ? data.LKL_H2H : data.ACB_H2H;
 
-function avg(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+  const r1 = last10[t1] || [];
+  const r2 = last10[t2] || [];
 
-function calculate(){
-  const t1=document.getElementById('team1').value;
-  const t2=document.getElementById('team2').value;
+  const winPct1 = r1.length ? ((r1.filter(x => x.teamScore > x.oppScore).length / r1.length) * 100).toFixed(1) : 0;
+  const winPct2 = r2.length ? ((r2.filter(x => x.teamScore > x.oppScore).length / r2.length) * 100).toFixed(1) : 0;
 
-  const last15_1=last15Matches[t1] || [];
-  const last15_2=last15Matches[t2] || [];
+  const avg1 = r1.length ? (r1.reduce((a,b)=>a+b.teamScore,0)/r1.length).toFixed(1) : 0;
+  const avg2 = r2.length ? (r2.reduce((a,b)=>a+b.teamScore,0)/r2.length).toFixed(1) : 0;
 
-  const last15Avg1=last15_1.length>0?avg(last15_1):0;
-  const last15Avg2=last15_2.length>0?avg(last15_2):0;
-  const last15WinProb=last15Avg1/(last15Avg1+last15Avg2);
+  const key = `${t1}_${t2}`;
+  const keyAlt = `${t2}_${t1}`;
+  const hh = h2h[key] || h2h[keyAlt] || [];
+  const hAvg1 = hh.length ? (hh.reduce((a,b)=>a + b.team1Score,0)/hh.length).toFixed(1) : 0;
+  const hAvg2 = hh.length ? (hh.reduce((a,b)=>a + b.team2Score,0)/hh.length).toFixed(1) : 0;
 
-  // H2H
-  const h2hKey=headToHead[t1+"_"+t2] || headToHead[t2+"_"+t1];
-  let h2hWinProb=0.5, h2hDiff=0, h2hAvg1=0, h2hAvg2=0;
-  if(h2hKey){
-    const scores1=h2hKey.map(x=>x.score1);
-    const scores2=h2hKey.map(x=>x.score2);
-    h2hAvg1=avg(scores1); h2hAvg2=avg(scores2);
-    h2hWinProb=avg(scores1)/(avg(scores1)+avg(scores2));
-    h2hDiff=h2hAvg1-h2hAvg2;
-    if(headToHead[t2+"_"+t1]) h2hDiff*=-1;
-  }
+  let predWinner = "N/A";
+  if(hAvg1 && hAvg2) predWinner = parseFloat(hAvg1) > parseFloat(hAvg2) ? t1 : t2;
+  else predWinner = parseFloat(winPct1) > parseFloat(winPct2) ? t1 : t2;
 
-  const finalWinProb=0.5*last15WinProb+0.5*h2hWinProb;
-  const finalLoseProb=1-finalWinProb;
-  const predictedDiff=(0.5*(last15Avg1-last15Avg2)+0.5*h2hDiff).toFixed(1);
-  const predictedAvg=((last15Avg1+last15Avg2)/2 + (h2hAvg1+h2hAvg2)/2).toFixed(1);
+  const ou = ((parseFloat(avg1) + parseFloat(avg2))/2).toFixed(1);
 
-  const over=Math.min(0.95, Math.max(0.05, (last15Avg1+last15Avg2)/200));
-  const under=(1-over);
-  const winner = finalWinProb>0.5?t1:t2;
-
-  document.getElementById('result').innerHTML=`
-    <h2>Prognozė:</h2>
-    <p><strong>Win %:</strong> ${(finalWinProb*100).toFixed(1)}%</p>
-    <p><strong>Lose %:</strong> ${(finalLoseProb*100).toFixed(1)}%</p>
-    <p><strong>Prognozuojamas taškų skirtumas:</strong> ${predictedDiff}</p>
-    <p><strong>Prognozuojamas taškų vidurkis:</strong> ${predictedAvg}</p>
-    <p><strong>Over %:</strong> ${(over*100).toFixed(1)}%</p>
-    <p><strong>Under %:</strong> ${(under*100).toFixed(1)}%</p>
-    <p><strong>Prognozuojama laiminti komanda:</strong> ${winner}</p>
+  document.getElementById("result").innerHTML = `
+    <strong>Prognozuojamas laimėtojas:</strong> ${predWinner}<br>
+    <strong>${t1} Win %:</strong> ${winPct1}%<br>
+    <strong>${t2} Win %:</strong> ${winPct2}%<br>
+    <strong>${t1} avg taškai:</strong> ${avg1}<br>
+    <strong>${t2} avg taškai:</strong> ${avg2}<br>
+    <strong>H2H avg:</strong> ${hAvg1} : ${hAvg2}<br>
+    <strong>Over/Under prognozė:</strong> ${ou}
   `;
+
+  drawChart([winPct1, winPct2],[avg1,avg2],ou,t1,t2);
 }
 
+// ————— Grafiko funkcija su Chart.js —————
+let chartInstance = null;
+function drawChart(winPct, avgPoints, ou, t1, t2){
+  const ctx = document.getElementById('chart').getContext('2d');
+  if(chartInstance) chartInstance.destroy();
+  chartInstance = new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:[`${t1} Win %`,`${t2} Win %`,`Over/Under`],
+      datasets:[{
+        label:'Prognozė',
+        data:[winPct[0],winPct[1],ou],
+        backgroundColor:['#2a4d69','#4b86b4','#adcbe3']
+      }]
+    },
+    options:{
+      responsive:true,
+      scales:{y:{beginAtZero:true}}
+    }
+  });
+}
 </script>
+
 </body>
 </html>
