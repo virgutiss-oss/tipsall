@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Krepšinio Prognozė LKL + ACB</title>
+<title>Krepšinio Prognozė LKL + ACB + BSL + LNB</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -15,12 +15,14 @@ canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
 </head>
 <body>
 
-<h1>Krepšinio Prognozė su Grafiku (LKL + ACB)</h1>
+<h1>Krepšinio Prognozė su Grafiku (LKL, ACB, BSL, LNB)</h1>
 
 <label>Lyga:</label>
 <select id="league" onchange="updateTeams()">
   <option value="LKL">LKL</option>
   <option value="ACB">ACB</option>
+  <option value="BSL">BSL</option>
+  <option value="LNB">LNB</option>
 </select>
 
 <label>Komanda 1:</label>
@@ -37,44 +39,60 @@ canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
 <script>
 // ————— JSON su paskutinėmis rungtynėmis ir H2H —————
 const data = {
-  "LKL_last10": {
-    "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77},{"date":"2025-12-27","opponent":"Rytas","teamScore":90,"oppScore":81},{"date":"2025-12-21","opponent":"Jonava Hipocredit","teamScore":118,"oppScore":73},{"date":"2025-11-09","opponent":"Nevėžis Kėdainiai","teamScore":94,"oppScore":68}],
-    "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90},{"date":"2025-11-15","opponent":"Neptūnas Klaipėda","teamScore":104,"oppScore":72},{"date":"2025-11-08","opponent":"Jonava Hipocredit","teamScore":105,"oppScore":71}],
-    "Neptūnas Klaipėda":[{"date":"2026-01-04","opponent":"Žalgiris Kaunas","teamScore":77,"oppScore":112},{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103},{"date":"2025-11-15","opponent":"Šiauliai","teamScore":97,"oppScore":90}],
-    "Lietkabelis Panevėžys":[{"date":"2026-01-04","opponent":"Juventus Utenos","teamScore":89,"oppScore":83},{"date":"2025-12-28","opponent":"Nevėžis Kėdainiai","teamScore":69,"oppScore":77},{"date":"2025-11-16","opponent":"Jonava Hipocredit","teamScore":96,"oppScore":85}],
-    "Juventus Utenos":[{"date":"2026-01-04","opponent":"Lietkabelis Panevėžys","teamScore":83,"oppScore":89},{"date":"2025-12-27","opponent":"Gargždai","teamScore":104,"oppScore":78},{"date":"2025-11-23","opponent":"Nevėžis Kėdainiai","teamScore":96,"oppScore":79},{"date":"2025-11-08","opponent":"Lietkabelis Panevėžys","teamScore":97,"oppScore":90}],
-    "Šiauliai":[{"date":"2026-01-03","opponent":"Nevėžis Kėdainiai","teamScore":98,"oppScore":95},{"date":"2025-12-28","opponent":"Neptūnas Klaipėda","teamScore":103,"oppScore":101},{"date":"2025-11-22","opponent":"Gargždai","teamScore":94,"oppScore":83},{"date":"2025-11-15","opponent":"Rytas","teamScore":100,"oppScore":105}],
-    "Nevėžis Kėdainiai":[{"date":"2026-01-03","opponent":"Šiauliai","teamScore":95,"oppScore":98},{"date":"2025-12-28","opponent":"Lietkabelis Panevėžys","teamScore":77,"oppScore":69},{"date":"2025-11-23","opponent":"Juventus Utenos","teamScore":79,"oppScore":96},{"date":"2025-11-08","opponent":"Gargždai","teamScore":74,"oppScore":90}],
-    "Gargždai":[{"date":"2026-01-03","opponent":"Jonava Hipocredit","teamScore":82,"oppScore":75},{"date":"2025-12-27","opponent":"Juventus Utenos","teamScore":78,"oppScore":104},{"date":"2025-11-22","opponent":"Šiauliai","teamScore":83,"oppScore":94},{"date":"2025-11-08","opponent":"Nevėžis Kėdainiai","teamScore":90,"oppScore":74}],
-    "Jonava Hipocredit":[{"date":"2026-01-03","opponent":"Gargždai","teamScore":75,"oppScore":82},{"date":"2025-12-14","opponent":"Nevėžis Kėdainiai","teamScore":85,"oppScore":83},{"date":"2025-12-21","opponent":"Žalgiris Kaunas","teamScore":73,"oppScore":118},{"date":"2025-11-19","opponent":"Šiauliai","teamScore":82,"oppScore":80}]
+  "LKL": {
+    "lastResults": {
+      "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77},{"date":"2025-12-27","opponent":"Rytas","teamScore":90,"oppScore":81}],
+      "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90},{"date":"2025-11-15","opponent":"Neptūnas Klaipėda","teamScore":104,"oppScore":72}],
+      "Neptūnas Klaipėda":[{"date":"2026-01-04","opponent":"Žalgiris Kaunas","teamScore":77,"oppScore":112},{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103}],
+      "Lietkabelis Panevėžys":[{"date":"2026-01-04","opponent":"Juventus Utenos","teamScore":89,"oppScore":83}],
+      "Juventus Utenos":[{"date":"2026-01-04","opponent":"Lietkabelis Panevėžys","teamScore":83,"oppScore":89}],
+      "Šiauliai":[{"date":"2026-01-03","opponent":"Nevėžis Kėdainiai","teamScore":98,"oppScore":95}],
+      "Nevėžis Kėdainiai":[{"date":"2026-01-03","opponent":"Šiauliai","teamScore":95,"oppScore":98}],
+      "Gargždai":[{"date":"2026-01-03","opponent":"Jonava Hipocredit","teamScore":82,"oppScore":75}],
+      "Jonava Hipocredit":[{"date":"2026-01-03","opponent":"Gargždai","teamScore":75,"oppScore":82}]
+    },
+    "H2H":{
+      "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}],
+      "Neptūnas Klaipėda_Šiauliai":[{"date":"2025-12-28","team1Score":101,"team2Score":103}]
+    }
   },
-  "LKL_H2H": {
-    "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}],
-    "Neptūnas Klaipėda_Šiauliai":[{"date":"2025-12-28","team1Score":101,"team2Score":103}],
-    "Lietkabelis Panevėžys_Nevėžis Kėdainiai":[{"date":"2025-12-28","team1Score":69,"team2Score":77}],
-    "Juventus Utenos_Gargždai":[{"date":"2025-12-27","team1Score":104,"team2Score":78}],
-    "Gargždai_Jonava Hipocredit":[{"date":"2026-01-03","team1Score":82,"team2Score":75}]
+  "ACB": {
+    "lastResults":{
+      "Real Madrid":[{"date":"2026-01-04","opponent":"Barcelona","teamScore":100,"oppScore":105}],
+      "Barcelona":[{"date":"2026-01-04","opponent":"Real Madrid","teamScore":105,"oppScore":100}],
+      "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}],
+      "Surne Bilbao Basket":[{"date":"2026-01-02","opponent":"Valencia Basket","teamScore":72,"oppScore":116}]
+    },
+    "H2H":{
+      "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}],
+      "Valencia Basket_Surne Bilbao Basket":[{"date":"2026-01-02","team1Score":116,"team2Score":72}]
+    }
   },
-  "ACB_last10": {
-    "Real Madrid":[{"date":"2026-01-04","opponent":"Barcelona","teamScore":100,"oppScore":105},{"date":"2025-12-14","opponent":"Girona","teamScore":112,"oppScore":76}],
-    "Barcelona":[{"date":"2026-01-04","opponent":"Real Madrid","teamScore":105,"oppScore":100},{"date":"2025-12-14","opponent":"Manresa","teamScore":89,"oppScore":62}],
-    "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}],
-    "Surne Bilbao Basket":[{"date":"2026-01-02","opponent":"Valencia Basket","teamScore":72,"oppScore":116},{"date":"2025-12-14","opponent":"Forca Lleida","teamScore":93,"oppScore":75}],
-    "Joventut Badalona":[{"date":"2025-12-21","opponent":"Rio Breogán","teamScore":83,"oppScore":75}],
-    "Bàsquet Girona":[{"date":"2025-12-14","opponent":"Forca Lleida","teamScore":103,"oppScore":86}],
-    "UCAM Murcia":[{"date":"2025-12-14","opponent":"Surne Bilbao Basket","teamScore":80,"oppScore":77}],
-    "Casademont Zaragoza":[{"date":"2025-12-21","opponent":"Andorra","teamScore":107,"oppScore":89}]
+  "BSL": {
+    "lastResults":{
+      "Fenerbahçe Beko":[{"date":"2025-10-12","opponent":"Petkim Spor","teamScore":105,"oppScore":83}],
+      "Beşiktaş GAİN":[{"date":"2025-10-12","opponent":"Türk Telekom","teamScore":77,"oppScore":72}],
+      "Anadolu Efes":[{"date":"2025-10-11","opponent":"Tofaş","teamScore":98,"oppScore":85}],
+      "Türk Telekom":[{"date":"2025-10-12","opponent":"Beşiktaş GAİN","teamScore":72,"oppScore":77}]
+    },
+    "H2H":{
+      "Fenerbahçe Beko_Beşiktaş GAİN":[{"date":"2025-10-06","team1Score":87,"team2Score":73}]
+    }
   },
-  "ACB_H2H": {
-    "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}],
-    "Valencia Basket_Surne Bilbao Basket":[{"date":"2026-01-02","team1Score":116,"team2Score":72}]
+  "LNB": {
+    "lastResults":{
+      "AS Monaco":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":92,"oppScore":85}],
+      "Paris Basketball":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":107,"oppScore":67}],
+      "ASVEL Lyon-Villeurbanne":[{"date":"2025-10-25","opponent":"Limoges CSP","teamScore":95,"oppScore":87}]
+    },
+    "H2H":{}
   }
 };
 
 // ————— Dinamiškai užpildyti komandų select —————
 function updateTeams() {
   const league = document.getElementById("league").value;
-  const teams = league === "LKL" ? Object.keys(data.LKL_last10) : Object.keys(data.ACB_last10);
+  const teams = Object.keys(data[league].lastResults);
   const team1 = document.getElementById("team1");
   const team2 = document.getElementById("team2");
   team1.innerHTML = "";
@@ -91,11 +109,11 @@ function calculate() {
   const league = document.getElementById("league").value;
   const t1 = document.getElementById("team1").value;
   const t2 = document.getElementById("team2").value;
-  const last10 = league === "LKL" ? data.LKL_last10 : data.ACB_last10;
-  const h2h = league === "LKL" ? data.LKL_H2H : data.ACB_H2H;
+  const lastResults = data[league].lastResults;
+  const h2h = data[league].H2H;
 
-  const r1 = last10[t1] || [];
-  const r2 = last10[t2] || [];
+  const r1 = lastResults[t1] || [];
+  const r2 = lastResults[t2] || [];
 
   const winPct1 = r1.length ? ((r1.filter(x => x.teamScore > x.oppScore).length / r1.length) * 100).toFixed(1) : 0;
   const winPct2 = r2.length ? ((r2.filter(x => x.teamScore > x.oppScore).length / r2.length) * 100).toFixed(1) : 0;
@@ -113,7 +131,6 @@ function calculate() {
   if(hAvg1 && hAvg2) predWinner = parseFloat(hAvg1) > parseFloat(hAvg2) ? t1 : t2;
   else predWinner = parseFloat(winPct1) > parseFloat(winPct2) ? t1 : t2;
 
-  // Bendras Over/Under
   let totalScorePrediction = 0;
   if(hAvg1 && hAvg2) {
     totalScorePrediction = (parseFloat(hAvg1) + parseFloat(hAvg2)).toFixed(1);
@@ -131,7 +148,7 @@ function calculate() {
     <strong>Bendras Over/Under prognozė:</strong> ${totalScorePrediction}
   `;
 
-  drawChart([winPct1, winPct2], [avg1, avg2], totalScorePrediction, t1, t2);
+  drawChart([winPct1, winPct2],[avg1,avg2],totalScorePrediction,t1,t2);
 }
 
 // ————— Grafiko funkcija —————
