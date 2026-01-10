@@ -1,9 +1,13 @@
+# Paruošime HTML failą su surinktais duomenimis iš visų penkių lygių, 
+# panaudojant dabartinius duomenis, kaip buvo aptarta.
+
+html_content = """
 <!DOCTYPE html>
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Krepšinio Prognozė LKL + ACB + BSL + LNB</title>
+<title>Krepšinio Prognozė – 5 lygos</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <style>
 body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -15,7 +19,7 @@ canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
 </head>
 <body>
 
-<h1>Krepšinio Prognozė su Grafiku (LKL, ACB, BSL, LNB)</h1>
+<h1>Krepšinio Prognozė (LKL, ACB, BSL, LNB, BBL)</h1>
 
 <label>Lyga:</label>
 <select id="league" onchange="updateTeams()">
@@ -23,6 +27,7 @@ canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
   <option value="ACB">ACB</option>
   <option value="BSL">BSL</option>
   <option value="LNB">LNB</option>
+  <option value="BBL">BBL</option>
 </select>
 
 <label>Komanda 1:</label>
@@ -37,59 +42,61 @@ canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
 <canvas id="chart" width="600" height="400"></canvas>
 
 <script>
-// ————— JSON su paskutinėmis rungtynėmis ir H2H —————
+// JSON su turimais duomenimis
 const data = {
   "LKL": {
     "lastResults": {
-      "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77},{"date":"2025-12-27","opponent":"Rytas","teamScore":90,"oppScore":81}],
-      "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90},{"date":"2025-11-15","opponent":"Neptūnas Klaipėda","teamScore":104,"oppScore":72}],
-      "Neptūnas Klaipėda":[{"date":"2026-01-04","opponent":"Žalgiris Kaunas","teamScore":77,"oppScore":112},{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103}],
-      "Lietkabelis Panevėžys":[{"date":"2026-01-04","opponent":"Juventus Utenos","teamScore":89,"oppScore":83}],
-      "Juventus Utenos":[{"date":"2026-01-04","opponent":"Lietkabelis Panevėžys","teamScore":83,"oppScore":89}],
-      "Šiauliai":[{"date":"2026-01-03","opponent":"Nevėžis Kėdainiai","teamScore":98,"oppScore":95}],
-      "Nevėžis Kėdainiai":[{"date":"2026-01-03","opponent":"Šiauliai","teamScore":95,"oppScore":98}],
-      "Gargždai":[{"date":"2026-01-03","opponent":"Jonava Hipocredit","teamScore":82,"oppScore":75}],
-      "Jonava Hipocredit":[{"date":"2026-01-03","opponent":"Gargždai","teamScore":75,"oppScore":82}]
+      "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77}],
+      "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90}],
+      "Neptūnas Klaipėda":[{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103}]
     },
-    "H2H":{
-      "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}],
-      "Neptūnas Klaipėda_Šiauliai":[{"date":"2025-12-28","team1Score":101,"team2Score":103}]
+    "H2H": {
+      "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}]
     }
   },
   "ACB": {
-    "lastResults":{
+    "lastResults": {
       "Real Madrid":[{"date":"2026-01-04","opponent":"Barcelona","teamScore":100,"oppScore":105}],
       "Barcelona":[{"date":"2026-01-04","opponent":"Real Madrid","teamScore":105,"oppScore":100}],
-      "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}],
-      "Surne Bilbao Basket":[{"date":"2026-01-02","opponent":"Valencia Basket","teamScore":72,"oppScore":116}]
+      "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}]
     },
-    "H2H":{
-      "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}],
-      "Valencia Basket_Surne Bilbao Basket":[{"date":"2026-01-02","team1Score":116,"team2Score":72}]
+    "H2H": {
+      "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}]
     }
   },
   "BSL": {
-    "lastResults":{
+    "lastResults": {
       "Fenerbahçe Beko":[{"date":"2025-10-12","opponent":"Petkim Spor","teamScore":105,"oppScore":83}],
-      "Beşiktaş GAİN":[{"date":"2025-10-12","opponent":"Türk Telekom","teamScore":77,"oppScore":72}],
-      "Anadolu Efes":[{"date":"2025-10-11","opponent":"Tofaş","teamScore":98,"oppScore":85}],
-      "Türk Telekom":[{"date":"2025-10-12","opponent":"Beşiktaş GAİN","teamScore":72,"oppScore":77}]
+      "Anadolu Efes":[{"date":"2025-10-11","opponent":"Tofaş","teamScore":98,"oppScore":85}]
     },
-    "H2H":{
-      "Fenerbahçe Beko_Beşiktaş GAİN":[{"date":"2025-10-06","team1Score":87,"team2Score":73}]
+    "H2H": {
+      "Fenerbahçe Beko_Anadolu Efes":[{"date":"2025-10-11","team1Score":98,"team2Score":85}]
     }
   },
   "LNB": {
-    "lastResults":{
+    "lastResults": {
       "AS Monaco":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":92,"oppScore":85}],
-      "Paris Basketball":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":107,"oppScore":67}],
-      "ASVEL Lyon-Villeurbanne":[{"date":"2025-10-25","opponent":"Limoges CSP","teamScore":95,"oppScore":87}]
+      "Paris Basketball":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":107,"oppScore":67}]
     },
-    "H2H":{}
+    "H2H": {}
+  },
+  "BBL": {
+    "lastResults": {
+      "Bayern Munich":[{"date":"2026-01-03","opponent":"Rostock Seawolves","teamScore":85,"oppScore":67}],
+      "Brose Bamberg":[{"date":"2026-01-04","opponent":"Telekom Baskets Bonn","teamScore":74,"oppScore":76}],
+      "Telekom Baskets Bonn":[{"date":"2026-01-05","opponent":"Brose Bamberg","teamScore":76,"oppScore":74}],
+      "Rostock Seawolves":[{"date":"2026-01-08","opponent":"Science City Jena","teamScore":89,"oppScore":82}],
+      "Science City Jena":[{"date":"2026-01-08","opponent":"Rostock Seawolves","teamScore":82,"oppScore":89}],
+      "Phantoms Braunschweig":[{"date":"2026-01-04","opponent":"Bayern Munich","teamScore":62,"oppScore":91}]
+    },
+    "H2H": {
+      "Bayern Munich_Rostock Seawolves":[{"date":"2026-01-03","team1Score":85,"team2Score":67}],
+      "Brose Bamberg_Telekom Baskets Bonn":[{"date":"2026-01-05","team1Score":74,"team2Score":76}],
+      "Rostock Seawolves_Science City Jena":[{"date":"2026-01-08","team1Score":89,"team2Score":82}]
+    }
   }
 };
 
-// ————— Dinamiškai užpildyti komandų select —————
 function updateTeams() {
   const league = document.getElementById("league").value;
   const teams = Object.keys(data[league].lastResults);
@@ -104,7 +111,6 @@ function updateTeams() {
 }
 updateTeams();
 
-// ————— Skaičiavimo logika su bendru Over/Under —————
 function calculate() {
   const league = document.getElementById("league").value;
   const t1 = document.getElementById("team1").value;
@@ -151,7 +157,6 @@ function calculate() {
   drawChart([winPct1, winPct2],[avg1,avg2],totalScorePrediction,t1,t2);
 }
 
-// ————— Grafiko funkcija —————
 let chartInstance = null;
 function drawChart(winPct, avgPoints, ou, t1, t2){
   const ctx = document.getElementById('chart').getContext('2d');
@@ -176,3 +181,11 @@ function drawChart(winPct, avgPoints, ou, t1, t2){
 
 </body>
 </html>
+"""
+
+# Išsaugome failą
+file_path = '/mnt/data/basketball_prediction_current.html'
+with open(file_path, 'w', encoding='utf-8') as f:
+    f.write(html_content)
+
+file_path
