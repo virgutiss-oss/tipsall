@@ -2,197 +2,168 @@
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sporto Statymo Dashboard su Prognozėmis</title>
+<title>Asmeninė statymų analizė</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f2f5; color:#333; }
-header { background:#007bff; color:#fff; padding:20px; text-align:center; }
-main { padding:20px; max-width:1200px; margin:0 auto; }
-h1,h2 { margin-bottom:10px; }
-.filters { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
-select, input { padding:8px; font-size:16px; border-radius:5px; border:1px solid #ccc; }
-.cards-container { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:15px; }
-.card { background:#fff; padding:15px; border-radius:15px; box-shadow:0 4px 10px rgba(0,0,0,0.1); cursor:pointer; transition: transform 0.3s, box-shadow 0.3s; }
-.card:hover { transform: translateY(-10px); box-shadow:0 8px 20px rgba(0,0,0,0.2); }
-.card img { width:30px; vertical-align:middle; margin-right:8px; }
-.card .diff { font-weight:bold; padding:5px 10px; border-radius:8px; color:#fff; display:inline-block; background:linear-gradient(45deg,#28a745,#dc3545); }
-.card .diff.low { background:linear-gradient(45deg,#28a745,#a1e887);}
-.card .diff.medium { background:linear-gradient(45deg,#ffc107,#ffdd7f);}
-.card .diff.high { background:linear-gradient(45deg,#dc3545,#ff7f7f);}
-.card-details { display:none; margin-top:10px; font-size:14px; background:#f9f9f9; padding:8px; border-radius:5px; }
-.chart-container { margin-top:40px; text-align:center; }
+:root {--bg:#f2f2f2;--card:#fff;--text:#000}
+.dark {--bg:#121212;--card:#1e1e1e;--text:#fff}
+body{font-family:Arial;background:var(--bg);color:var(--text);padding:15px}
+h1{text-align:center}
+.card{background:var(--card);padding:15px;border-radius:10px;margin-bottom:15px}
+input,select,button{width:100%;padding:10px;margin-bottom:8px}
+button{background:#333;color:#fff;border:none;border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{border:1px solid #666;padding:5px;text-align:center}
+.delete{color:red;cursor:pointer}
+small{opacity:.7}
 </style>
 </head>
+
 <body>
-<header>
-<h1>Sporto Statymo Dashboard su Prognozėmis</h1>
-<p>Demo su tikromis komandomis, rezultatais ir prognozėmis</p>
-</header>
-<main>
-<div class="filters">
-<select id="sport-select"><option value="">-- Visi sportai --</option></select>
-<select id="league-select"><option value="">-- Visi lygos --</option></select>
-<input type="date" id="date-filter" />
+
+<h1>📊 Statymų analizė</h1>
+<button onclick="toggleDark()">🌙 Dark mode</button>
+
+<div class="card">
+<form id="betForm">
+<input id="event" placeholder="Rungtynės" required>
+<input id="sport" placeholder="Sportas / Lyga">
+<input id="odds" type="number" step="0.01" placeholder="Koeficientas" required>
+<input id="stake" type="number" placeholder="Statymas €" required>
+<input id="prob" type="number" step="0.01" placeholder="Mano tikimybė (0–1)" required>
+<select id="result">
+<option value="">Rezultatas</option>
+<option value="win">Win</option>
+<option value="loss">Loss</option>
+</select>
+<button type="submit">➕ Pridėti</button>
+</form>
 </div>
 
-<div class="cards-container" id="cards-container"></div>
-
-<div class="chart-container">
-<h2>TOP 10 pagal prognozuojamą rezultatų skirtumą</h2>
-<canvas id="resultChart" width="1000" height="400"></canvas>
+<div class="card">
+<label>🔍 Filtrai</label>
+<input id="filterSport" placeholder="Filtruoti pagal sportą">
+<select id="filterValue" onchange="render()">
+<option value="all">Visi</option>
+<option value="value">Tik value bet</option>
+</select>
 </div>
-</main>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<div class="card">
+<table>
+<thead>
+<tr>
+<th>Event</th><th>Sportas</th><th>Odds</th><th>Stake</th>
+<th>Value</th><th>Kelly €</th><th>P/L</th><th>❌</th>
+</tr>
+</thead>
+<tbody id="bets"></tbody>
+</table>
+</div>
+
+<div class="card" id="stats"></div>
+
+<div class="card"><canvas id="chart"></canvas></div>
+
+<div class="card">
+<button onclick="exportCSV()">📁 Eksportuoti CSV</button>
+<small>Failą gali importuoti į Excel / Sheets</small>
+</div>
+
 <script>
-// --- Statiniai demo duomenys ---
-const demoSports = [
-    { sport:'Soccer', display:'Futbolas', icon:'⚽', leagues:[
-        {id:'EPL', name:'Premier League', matches:[
-            {date:'2026-01-10', home:'Manchester United', away:'Liverpool', score:'2-1'},
-            {date:'2026-01-11', home:'Chelsea', away:'Arsenal', score:'1-3'},
-            {date:'2026-01-12', home:'Manchester City', away:'Tottenham', score:'4-0'}
-        ]},
-        {id:'LaLiga', name:'La Liga', matches:[
-            {date:'2026-01-10', home:'Real Madrid', away:'Barcelona', score:'2-2'},
-            {date:'2026-01-11', home:'Atletico', away:'Sevilla', score:'1-0'}
-        ]}
-    ]},
-    { sport:'Basketball', display:'Krepšinis', icon:'🏀', leagues:[
-        {id:'NBA', name:'NBA', matches:[
-            {date:'2026-01-10', home:'Lakers', away:'Celtics', score:'102-98'},
-            {date:'2026-01-11', home:'Bulls', away:'Knicks', score:'95-110'}
-        ]}
-    ]},
-    { sport:'Tennis', display:'Tenisas', icon:'🎾', leagues:[
-        {id:'ATP', name:'ATP', matches:[
-            {date:'2026-01-10', home:'Nadal', away:'Federer', score:'3-2'},
-            {date:'2026-01-11', home:'Djokovic', away:'Medvedev', score:'3-1'}
-        ]}
-    ]}
-];
+let bets=JSON.parse(localStorage.getItem("bets"))||[];
+let dark=localStorage.getItem("dark")==="true";
+if(dark)document.body.classList.add("dark");
 
-let allMatches = [];
-let leaguesBySport = {};
-
-// --- Prognozių funkcijos ---
-function calculateStats(team, sport) {
-  const matches = allMatches.filter(m =>
-    m.sport === sport && (m.home === team || m.away === team)
-  );
-
-  let wins = 0, goalsFor = 0, goalsAgainst = 0;
-  matches.forEach(m=>{
-    const [homeScore, awayScore] = m.score.split('-').map(Number);
-    if(m.home===team){ goalsFor+=homeScore; goalsAgainst+=awayScore; if(homeScore>awayScore) wins++; }
-    else { goalsFor+=awayScore; goalsAgainst+=homeScore; if(awayScore>homeScore) wins++; }
-  });
-
-  const winRate = matches.length ? wins / matches.length : 0;
-  const avgFor = matches.length ? goalsFor / matches.length : 0;
-  const avgAgainst = matches.length ? goalsAgainst / matches.length : 0;
-  return {winRate, avgFor, avgAgainst};
+function toggleDark(){
+document.body.classList.toggle("dark");
+localStorage.setItem("dark",document.body.classList.contains("dark"));
 }
 
-function predictMatch(homeTeam, awayTeam, sport) {
-  const homeStats = calculateStats(homeTeam, sport);
-  const awayStats = calculateStats(awayTeam, sport);
-
-  const homeScore = homeStats.avgFor*0.6 + awayStats.avgAgainst*0.4;
-  const awayScore = awayStats.avgFor*0.6 + homeStats.avgAgainst*0.4;
-  let winner = homeScore > awayScore ? homeTeam : awayTeam;
-  if(Math.abs(homeScore-awayScore)<0.5) winner = 'Lygiiosios';
-  return {
-    predictedHomeScore: Math.round(homeScore),
-    predictedAwayScore: Math.round(awayScore),
-    predictedWinner: winner
-  };
+function valueBet(p,o){return (p*o-1)}
+function profit(b){return b.result==="win"?b.stake*b.odds-b.stake:b.result==="loss"?-b.stake:0}
+function kelly(p,o,bank=100){
+let k=((p*(o-1)-(1-p))/(o-1));
+return k>0?(k*bank).toFixed(2):0;
 }
 
-// --- Init sportų select ir masyvų ---
-function initSports(){
-  const sportSelect = document.getElementById('sport-select');
-  demoSports.forEach(s=>{
-    const option=document.createElement('option'); option.value=s.sport; option.textContent=s.display; sportSelect.appendChild(option);
-    leaguesBySport[s.sport]=s.leagues;
-    s.leagues.forEach(l=>{
-      l.matches.forEach(m=>{
-        const homeScore = parseInt(m.score.split('-')[0]);
-        const awayScore = parseInt(m.score.split('-')[1]);
-        const pred = predictMatch(m.home, m.away, s.display);
-        allMatches.push({
-          sport:s.display, icon:s.icon, league:l.name, date:m.date,
-          teams:m.home+' vs '+m.away, score:m.score, diff:Math.abs(homeScore-awayScore),
-          predictedWinner: pred.predictedWinner,
-          predictedScore: pred.predictedHomeScore+'-'+pred.predictedAwayScore,
-          details:'Demo rungtynių informacija su prognoze'
-        });
-      });
-    });
-  });
-  updateLeagueSelect(); displayFiltered();
+function render(){
+const tbody=document.getElementById("bets");
+const fs=document.getElementById("filterSport").value.toLowerCase();
+const fv=document.getElementById("filterValue").value;
+tbody.innerHTML="";
+let totalStake=0,totalProfit=0,bank=0,curve=[];
+bets.forEach((b,i)=>{
+if(fs && !b.sport.toLowerCase().includes(fs))return;
+let val=valueBet(b.prob,b.odds);
+if(fv==="value" && val<=0)return;
+totalStake+=b.stake;
+totalProfit+=profit(b);
+bank+=profit(b);
+curve.push(bank);
+tbody.innerHTML+=`
+<tr>
+<td>${b.event}</td>
+<td>${b.sport}</td>
+<td>${b.odds}</td>
+<td>${b.stake}</td>
+<td>${val.toFixed(2)}</td>
+<td>${kelly(b.prob,b.odds)}</td>
+<td>${profit(b).toFixed(2)}</td>
+<td class="delete" onclick="del(${i})">✖</td>
+</tr>`;
+});
+let roi=totalStake?((totalProfit/totalStake)*100).toFixed(2):0;
+document.getElementById("stats").innerHTML=
+`💰 Pelnas: <b>${totalProfit.toFixed(2)} €</b><br>
+📈 ROI: <b>${roi}%</b><br>
+📊 Statymų: <b>${bets.length}</b>`;
+draw(curve);
+localStorage.setItem("bets",JSON.stringify(bets));
 }
 
-// --- Filtravimas ir atvaizdavimas ---
-function updateLeagueSelect(){
-  const sport=document.getElementById('sport-select').value;
-  const leagueSelect=document.getElementById('league-select');
-  leagueSelect.innerHTML='<option value="">-- Visi lygos --</option>';
-  if(sport && leaguesBySport[sport]){
-    leaguesBySport[sport].forEach(l=>{
-      const opt=document.createElement('option'); opt.value=l.name; opt.textContent=l.name; leagueSelect.appendChild(opt);
-    });
-  }
+function del(i){bets.splice(i,1);render();}
+
+document.getElementById("betForm").onsubmit=e=>{
+e.preventDefault();
+bets.push({
+event:event.value,
+sport:sport.value||"",
+odds:+odds.value,
+stake:+stake.value,
+prob:+prob.value,
+result:result.value
+});
+e.target.reset();render();
+};
+
+let chart;
+function draw(data){
+if(chart)chart.destroy();
+chart=new Chart(document.getElementById("chart"),{
+type:"line",
+data:{labels:data.map((_,i)=>i+1),
+datasets:[{label:"Bankroll",data:data,borderColor:"green"}]},
+options:{plugins:{legend:{display:false}}}
+});
 }
 
-function displayFiltered(){
-  const sportFilter=document.getElementById('sport-select').value;
-  const leagueFilter=document.getElementById('league-select').value;
-  const dateFilter=document.getElementById('date-filter').value;
-
-  let filtered = allMatches.slice();
-  if(sportFilter) filtered=filtered.filter(m=>m.sport===demoSports.find(d=>d.sport===sportFilter).display);
-  if(leagueFilter) filtered=filtered.filter(m=>m.league===leagueFilter);
-  if(dateFilter) filtered=filtered.filter(m=>m.date===dateFilter);
-
-  filtered.sort((a,b)=>b.diff-a.diff);
-
-  const cardsContainer=document.getElementById('cards-container'); cardsContainer.innerHTML='';
-  filtered.forEach(m=>{
-    let diffClass=m.diff<=2?'low':m.diff<=5?'medium':'high';
-    const card=document.createElement('div'); card.className='card';
-    card.innerHTML=`<h3>${m.icon} ${m.teams}</h3>
-      <p><strong>Data:</strong> ${m.date}</p>
-      <p><strong>Sportas:</strong> ${m.sport}</p>
-      <p><strong>Lyga:</strong> ${m.league}</p>
-      <p><strong>Rezultatas:</strong> ${m.score}</p>
-      <p><strong>Skirtumas:</strong> <span class="diff ${diffClass}">${m.diff}</span></p>
-      <p><strong>Prognozė:</strong> ${m.predictedScore} | Nugalėtojas: ${m.predictedWinner}</p>
-      <div class="card-details">${m.details}</div>`;
-    card.addEventListener('click', ()=>{ const details=card.querySelector('.card-details'); details.style.display=details.style.display==='none'?'block':'none'; });
-    cardsContainer.appendChild(card);
-  });
-
-  const top10 = filtered.slice(0,10);
-  const ctx = document.getElementById('resultChart').getContext('2d');
-  if(window.resultChart) window.resultChart.destroy();
-  window.resultChart=new Chart(ctx,{
-    type:'bar',
-    data:{
-      labels:top10.map(d=>d.date+'-'+d.sport),
-      datasets:[{label:'Rezultatų skirtumas',data:top10.map(d=>d.diff),backgroundColor:'rgba(0,123,255,0.5)',borderColor:'#007bff',borderWidth:1}]
-    },
-    options:{responsive:true,plugins:{legend:{display:true},title:{display:true,text:'TOP 10 Rezultatų Skirtumų'}},scales:{y:{beginAtZero:true}}}
-  });
+function exportCSV(){
+let csv="Event,Sport,Odds,Stake,Prob,Result\n";
+bets.forEach(b=>{
+csv+=`${b.event},${b.sport},${b.odds},${b.stake},${b.prob},${b.result}\n`;
+});
+let blob=new Blob([csv],{type:"text/csv"});
+let a=document.createElement("a");
+a.href=URL.createObjectURL(blob);
+a.download="bets.csv";
+a.click();
 }
 
-// --- Event listeners ---
-document.getElementById('sport-select').addEventListener('change',()=>{updateLeagueSelect(); displayFiltered();});
-document.getElementById('league-select').addEventListener('change',displayFiltered);
-document.getElementById('date-filter').addEventListener('change',displayFiltered);
-
-// --- Init ---
-initSports();
+render();
 </script>
+
 </body>
 </html>
