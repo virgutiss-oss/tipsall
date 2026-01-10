@@ -5,15 +5,14 @@
 <title>BBL Prognozių Skaičiuoklė</title>
 <style>
 body { font-family: Arial, sans-serif; margin:20px; }
-h1 { color: #333; text-align: center; }
-label { display:block; margin-top:15px; font-weight: bold; }
-select { width: 100%; padding: 8px; margin-bottom: 10px; }
-button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
+h1 { text-align:center; color:#333; }
+label { display:block; margin-top:10px; font-weight:bold; }
+select { width:100%; padding:8px; margin-bottom:10px; }
+button { padding:10px 15px; font-size:16px; cursor:pointer; }
 #results { margin-top:20px; padding:15px; border:1px solid #ccc; border-radius:5px; background:#fafafa; }
 </style>
 </head>
 <body>
-
 <h1>BBL Prognozių Skaičiuoklė</h1>
 
 <label>Pasirink Komandą 1:</label>
@@ -61,20 +60,34 @@ button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
 </select>
 
 <button onclick="showPrediction()">Skaičiuoti prognozę</button>
-
 <div id="results"></div>
 
 <script>
-// ————— Pilnas JSON su 10 rungtynių + H2H visoms 18 komandų —————
+// JSON duomenys 18 komandų, pirmos 4 komandos (ALBA, Bayern, Bamberg, Telekom Bonn)
 const teamsData = {
 "ALBA Berlin":[{"opponent":"EWE Baskets Oldenburg","teamScore":73,"oppScore":76},{"opponent":"Basketball Löwen Braunschweig","teamScore":104,"oppScore":73},{"opponent":"MHP Riesen Ludwigsburg","teamScore":80,"oppScore":47},{"opponent":"Rostock Seawolves","teamScore":80,"oppScore":66},{"opponent":"ratiopharm Ulm","teamScore":66,"oppScore":67},{"opponent":"Bayern Munich","teamScore":106,"oppScore":82},{"opponent":"Veolia Towers Hamburg","teamScore":80,"oppScore":99},{"opponent":"Skyliners Frankfurt","teamScore":89,"oppScore":83},{"opponent":"NINERS Chemnitz","teamScore":89,"oppScore":85},{"opponent":"Sabah BC","teamScore":106,"oppScore":82}],
 "Bayern Munich":[{"opponent":"Telekom Baskets Bonn","teamScore":82,"oppScore":74},{"opponent":"Basketball Löwen Braunschweig","teamScore":91,"oppScore":70},{"opponent":"Syntainics MBC","teamScore":94,"oppScore":72},{"opponent":"ratiopharm Ulm","teamScore":70,"oppScore":73},{"opponent":"MLP Academics Heidelberg","teamScore":75,"oppScore":69},{"opponent":"Bamberg Baskets","teamScore":81,"oppScore":80},{"opponent":"Rasta Vechta","teamScore":73,"oppScore":70},{"opponent":"Fitvia Würzburg","teamScore":70,"oppScore":75},{"opponent":"Skyliners Frankfurt","teamScore":81,"oppScore":72},{"opponent":"BG Göttingen","teamScore":93,"oppScore":73}],
 "Bamberg Baskets":[{"opponent":"MHP Riesen Ludwigsburg","teamScore":79,"oppScore":100},{"opponent":"Telekom Baskets Bonn","teamScore":74,"oppScore":76},{"opponent":"Bayern Munich","teamScore":80,"oppScore":81},{"opponent":"Rasta Vechta","teamScore":77,"oppScore":70},{"opponent":"BG Göttingen","teamScore":94,"oppScore":87},{"opponent":"Skyliners Frankfurt","teamScore":84,"oppScore":76},{"opponent":"ratiopharm Ulm","teamScore":75,"oppScore":89},{"opponent":"Rostock Seawolves","teamScore":83,"oppScore":80},{"opponent":"EWE Baskets Oldenburg","teamScore":77,"oppScore":85},{"opponent":"Syntainics MBC","teamScore":91,"oppScore":85}],
-"Telekom Baskets Bonn":[{"opponent":"Bayern Munich","teamScore":74,"oppScore":82},{"opponent":"Bamberg Baskets","teamScore":76,"oppScore":74},{"opponent":"Skyliners Frankfurt","teamScore":88,"oppScore":82},{"opponent":"ratiopharm Ulm","teamScore":80,"oppScore":85},{"opponent":"Rostock Seawolves","teamScore":91,"oppScore":84},{"opponent":"Syntainics MBC","teamScore":89,"oppScore":82},{"opponent":"EWE Baskets Oldenburg","teamScore":72,"oppScore":77},{"opponent":"Basketball Löwen Braunschweig","teamScore":95,"oppScore":80},{"opponent":"MLP Academics Heidelberg","teamScore":100,"oppScore":67},{"opponent":"Hamburg Towers","teamScore":77,"oppScore":72}],
-// Likusias komandas įdėti analogiškai su tavo pateiktais duomenimis
+"Telekom Baskets Bonn":[{"opponent":"Bayern Munich","teamScore":74,"oppScore":82},{"opponent":"Bamberg Baskets","teamScore":76,"oppScore":74},{"opponent":"Skyliners Frankfurt","teamScore":88,"oppScore":82},{"opponent":"ratiopharm Ulm","teamScore":80,"oppScore":85},{"opponent":"Rostock Seawolves","teamScore":91,"oppScore":84},{"opponent":"Syntainics MBC","teamScore":89,"oppScore":82},{"opponent":"EWE Baskets Oldenburg","teamScore":72,"oppScore":77},{"opponent":"Basketball Löwen Braunschweig","teamScore":95,"oppScore":80},{"opponent":"MLP Academics Heidelberg","teamScore":100,"oppScore":67},{"opponent":"Hamburg Towers","teamScore":77,"oppScore":72}]
 };
+  Object.assign(teamsData, {
+"Rostock Seawolves":[{"opponent":"Science City Jena","teamScore":89,"oppScore":82},{"opponent":"ALBA Berlin","teamScore":66,"oppScore":80},{"opponent":"Telekom Baskets Bonn","teamScore":84,"oppScore":91},{"opponent":"Syntainics MBC","teamScore":83,"oppScore":75},{"opponent":"NINERS Chemnitz","teamScore":77,"oppScore":79},{"opponent":"Bamberg Baskets","teamScore":80,"oppScore":83},{"opponent":"BG Göttingen","teamScore":87,"oppScore":78},{"opponent":"Rasta Vechta","teamScore":64,"oppScore":69},{"opponent":"Skyliners Frankfurt","teamScore":102,"oppScore":74},{"opponent":"MHP Riesen Ludwigsburg","teamScore":73,"oppScore":84}],
+"Science City Jena":[{"opponent":"Rostock Seawolves","teamScore":82,"oppScore":89},{"opponent":"Syntainics MBC","teamScore":95,"oppScore":86},{"opponent":"Telekom Baskets Bonn","teamScore":80,"oppScore":92},{"opponent":"MHP Riesen Ludwigsburg","teamScore":82,"oppScore":91},{"opponent":"Bamberg Baskets","teamScore":102,"oppScore":81},{"opponent":"Skyliners Frankfurt","teamScore":70,"oppScore":79},{"opponent":"Ratiopharm Ulm","teamScore":92,"oppScore":70},{"opponent":"Gladiators Trier","teamScore":95,"oppScore":94},{"opponent":"NINERS Chemnitz","teamScore":72,"oppScore":85},{"opponent":"Würzburg Baskets","teamScore":92,"oppScore":97}],
+"MHP Riesen Ludwigsburg":[{"opponent":"Bamberg Baskets","teamScore":100,"oppScore":79},{"opponent":"ALBA Berlin","teamScore":47,"oppScore":80},{"opponent":"Science City Jena","teamScore":91,"oppScore":82},{"opponent":"Telekom Baskets Bonn","teamScore":80,"oppScore":76},{"opponent":"Rasta Vechta","teamScore":84,"oppScore":72},{"opponent":"ratiopharm Ulm","teamScore":77,"oppScore":79},{"opponent":"Syntainics MBC","teamScore":89,"oppScore":81},{"opponent":"Basketball Löwen Braunschweig","teamScore":82,"oppScore":69},{"opponent":"EWE Baskets Oldenburg","teamScore":78,"oppScore":70},{"opponent":"Rostock Seawolves","teamScore":84,"oppScore":73}],
+"EWE Baskets Oldenburg":[{"opponent":"ALBA Berlin","teamScore":76,"oppScore":73},{"opponent":"Skyliners Frankfurt","teamScore":93,"oppScore":66},{"opponent":"Bamberg Baskets","teamScore":85,"oppScore":77},{"opponent":"Telekom Baskets Bonn","teamScore":77,"oppScore":72},{"opponent":"Ratiopharm Ulm","teamScore":82,"oppScore":87},{"opponent":"MHP Riesen Ludwigsburg","teamScore":70,"oppScore":78},{"opponent":"Basketball Löwen Braunschweig","teamScore":91,"oppScore":74},{"opponent":"Bayern Munich","teamScore":67,"oppScore":79},{"opponent":"Rasta Vechta","teamScore":88,"oppScore":82},{"opponent":"BG Göttingen","teamScore":95,"oppScore":84}],
+"NINERS Chemnitz":[{"opponent":"Rasta Vechta","teamScore":81,"oppScore":77},{"opponent":"ALBA Berlin","teamScore":83,"oppScore":89},{"opponent":"Rostock Seawolves","teamScore":79,"oppScore":77},{"opponent":"ALBA Berlin","teamScore":85,"oppScore":89},{"opponent":"Skyliners Frankfurt","teamScore":88,"oppScore":74},{"opponent":"Science City Jena","teamScore":72,"oppScore":85},{"opponent":"Basketball Löwen Braunschweig","teamScore":96,"oppScore":88},{"opponent":"Syntainics MBC","teamScore":84,"oppScore":79},{"opponent":"ratiopharm Ulm","teamScore":76,"oppScore":82},{"opponent":"MHP Riesen Ludwigsburg","teamScore":87,"oppScore":78}],
+"Skyliners Frankfurt":[{"opponent":"EWE Baskets Oldenburg","teamScore":66,"oppScore":93},{"opponent":"Telekom Baskets Bonn","teamScore":82,"oppScore":88},{"opponent":"Science City Jena","teamScore":79,"oppScore":70},{"opponent":"Bamberg Baskets","teamScore":76,"oppScore":84},{"opponent":"NINERS Chemnitz","teamScore":74,"oppScore":88},{"opponent":"ALBA Berlin","teamScore":83,"oppScore":89},{"opponent":"Rostock Seawolves","teamScore":74,"oppScore":102},{"opponent":"Rasta Vechta","teamScore":80,"oppScore":77},{"opponent":"Bayern Munich","teamScore":72,"oppScore":81},{"opponent":"Basketball Löwen Braunschweig","teamScore":85,"oppScore":80}],
+"Rasta Vechta":[{"opponent":"NINERS Chemnitz","teamScore":77,"oppScore":81},{"opponent":"Syntainics MBC","teamScore":80,"oppScore":77},{"opponent":"Bamberg Baskets","teamScore":70,"oppScore":77},{"opponent":"MHP Riesen Ludwigsburg","teamScore":72,"oppScore":84},{"opponent":"Rostock Seawolves","teamScore":69,"oppScore":64},{"opponent":"Skyliners Frankfurt","teamScore":77,"oppScore":80},{"opponent":"Bayern Munich","teamScore":70,"oppScore":73},{"opponent":"EWE Baskets Oldenburg","teamScore":82,"oppScore":88},{"opponent":"Basketball Löwen Braunschweig","teamScore":83,"oppScore":75},{"opponent":"ratiopharm Ulm","teamScore":76,"oppScore":89}],
+"ratiopharm Ulm":[{"opponent":"Gladiators Trier","teamScore":89,"oppScore":100},{"opponent":"Würzburg Baskets","teamScore":66,"oppScore":61},{"opponent":"Bamberg Baskets","teamScore":106,"oppScore":83},{"opponent":"ALBA Berlin","teamScore":67,"oppScore":66},{"opponent":"Rasta Vechta","teamScore":77,"oppScore":75},{"opponent":"Science City Jena","teamScore":92,"oppScore":70},{"opponent":"Bayern Munich","teamScore":77,"oppScore":81},{"opponent":"Telekom Baskets Bonn","teamScore":79,"oppScore":81},{"opponent":"Skyliners Frankfurt","teamScore":75,"oppScore":67},{"opponent":"MHP Riesen Ludwigsburg","teamScore":81,"oppScore":90}],
+"MLP Academics Heidelberg":[{"opponent":"MHP Riesen Ludwigsburg","teamScore":73,"oppScore":89},{"opponent":"Skyliners Frankfurt","teamScore":75,"oppScore":80},{"opponent":"Telekom Baskets Bonn","teamScore":67,"oppScore":100},{"opponent":"Hamburg Towers","teamScore":108,"oppScore":111},{"opponent":"Bamberg Baskets","teamScore":69,"oppScore":80},{"opponent":"Basketball Löwen Braunschweig","teamScore":95,"oppScore":75},{"opponent":"Syntainics MBC","teamScore":67,"oppScore":85},{"opponent":"Gladiators Trier","teamScore":76,"oppScore":80},{"opponent":"Bayern Munich","teamScore":81,"oppScore":93},{"opponent":"Würzburg Baskets","teamScore":85,"oppScore":51}],
+"Würzburg Baskets":[{"opponent":"MLP Academics Heidelberg","teamScore":73,"oppScore":75},{"opponent":"ratiopharm Ulm","teamScore":80,"oppScore":88},{"opponent":"Science City Jena","teamScore":97,"oppScore":92},{"opponent":"Bayern Munich","teamScore":70,"oppScore":75},{"opponent":"Skyliners Frankfurt","teamScore":88,"oppScore":82},{"opponent":"MHP Riesen Ludwigsburg","teamScore":72,"oppScore":89},{"opponent":"Rostock Seawolves","teamScore":84,"oppScore":76},{"opponent":"NINERS Chemnitz","teamScore":78,"oppScore":85},{"opponent":"Telekom Baskets Bonn","teamScore":91,"oppScore":83},{"opponent":"Bamberg Baskets","teamScore":76,"oppScore":81}],
+"Gladiators Trier":[{"opponent":"ratiopharm Ulm","teamScore":100,"oppScore":89},{"opponent":"NINERS Chemnitz","teamScore":84,"oppScore":96},{"opponent":"Bayern Munich","teamScore":83,"oppScore":94},{"opponent":"Würzburg Baskets","teamScore":83,"oppScore":102},{"opponent":"Telekom Baskets Bonn","teamScore":102,"oppScore":98},{"opponent":"MHP Riesen Ludwigsburg","teamScore":86,"oppScore":80},{"opponent":"Science City Jena","teamScore":94,"oppScore":95},{"opponent":"Bayern Munich (BBL-Pokal)","teamScore":80,"oppScore":96},{"opponent":"MLP Academics Heidelberg","teamScore":80,"oppScore":76},{"opponent":"Rasta Vechta","teamScore":96,"oppScore":87}],
+"Hamburg Towers":[{"opponent":"Neptunas Klaipeda","teamScore":94,"oppScore":98},{"opponent":"Würzburg Baskets","teamScore":88,"oppScore":91},{"opponent":"Bahçeşehir Koleji","teamScore":68,"oppScore":105},{"opponent":"EWE Baskets Oldenburg","teamScore":69,"oppScore":94},{"opponent":"MLP Academics Heidelberg","teamScore":111,"oppScore":108},{"opponent":"Aris","teamScore":89,"oppScore":92},{"opponent":"ALBA Berlin","teamScore":99,"oppScore":80},{"opponent":"Hapoel Jerusalem","teamScore":76,"oppScore":86},{"opponent":"Rasta Vechta","teamScore":95,"oppScore":97},{"opponent":"Manresa","teamScore":72,"oppScore":99}],
+"Basketball Löwen Braunschweig":[{"opponent":"ALBA Berlin","teamScore":73,"oppScore":104},{"opponent":"Bayern Munich","teamScore":70,"oppScore":91},{"opponent":"MLP Academics Heidelberg","teamScore":75,"oppScore":95},{"opponent":"NINERS Chemnitz","teamScore":96,"oppScore":88},{"opponent":"Telekom Baskets Bonn","teamScore":80,"oppScore":95},{"opponent":"EWE Baskets Oldenburg","teamScore":69,"oppScore":91},{"opponent":"MHP Riesen Ludwigsburg","teamScore":82,"oppScore":89},{"opponent":"Rasta Vechta","teamScore":83,"oppScore":75},{"opponent":"Skyliners Frankfurt","teamScore":80,"oppScore":85},{"opponent":"ratiopharm Ulm","teamScore":69,"oppScore":88}],
+"Syntainics MBC":[{"opponent":"Science City Jena","teamScore":86,"oppScore":95},{"opponent":"MLP Academics Heidelberg","teamScore":85,"oppScore":67},{"opponent":"Rasta Vechta","teamScore":77,"oppScore":80},{"opponent":"Bayern Munich","teamScore":72,"oppScore":94},{"opponent":"Rostock Seawolves","teamScore":75,"oppScore":83},{"opponent":"MHP Riesen Ludwigsburg","teamScore":81,"oppScore":89},{"opponent":"NINERS Chemnitz","teamScore":79,"oppScore":84},{"opponent":"Telekom Baskets Bonn","teamScore":82,"oppScore":89},{"opponent":"Bamberg Baskets","teamScore":85,"oppScore":91},{"opponent":"ratiopharm Ulm","teamScore":74,"oppScore":100}]
+});
 
-// ————— Prognozavimo funkcija su H2H —————
+// Prognozavimo funkcija
 function showPrediction(){
   const t1 = document.getElementById("team1").value;
   const t2 = document.getElementById("team2").value;
@@ -82,42 +95,18 @@ function showPrediction(){
   const t1Games = teamsData[t1];
   const t2Games = teamsData[t2];
 
-  // Win/Loss %, Over/Under
   let t1Wins=0, t2Wins=0, t1Over=0, t2Over=0, t1Points=0, t2Points=0;
-  t1Games.forEach(g=>{
-    t1Points+=g.teamScore;
-    if(g.teamScore>g.oppScore) t1Wins++;
-    if(g.teamScore+g.oppScore>150) t1Over++;
-  });
-  t2Games.forEach(g=>{
-    t2Points+=g.teamScore;
-    if(g.teamScore>g.oppScore) t2Wins++;
-    if(g.teamScore+g.oppScore>150) t2Over++;
-  });
+  t1Games.forEach(g=>{t1Points+=g.teamScore;if(g.teamScore>g.oppScore) t1Wins++; if(g.teamScore+g.oppScore>150) t1Over++;});
+  t2Games.forEach(g=>{t2Points+=g.teamScore;if(g.teamScore>g.oppScore) t2Wins++; if(g.teamScore+g.oppScore>150) t2Over++;});
 
-  // Vidutinis taškų skirtumas
-  const t1AvgDiff = t1Points/t1Games.length;
-  const t2AvgDiff = t2Points/t2Games.length;
+  const t1Avg = t1Points/t1Games.length;
+  const t2Avg = t2Points/t2Games.length;
 
-  // H2H paskutinės tarpusavio rungtynės
   let h2hT1=0,h2hT2=0,h2hCount=0;
-  t1Games.forEach(g=>{
-    if(g.opponent===t2){
-      h2hCount++;
-      if(g.teamScore>g.oppScore) h2hT1++;
-      else h2hT2++;
-    }
-  });
-  t2Games.forEach(g=>{
-    if(g.opponent===t1){
-      h2hCount++;
-      if(g.teamScore>g.oppScore) h2hT2++;
-      else h2hT1++;
-    }
-  });
+  t1Games.forEach(g=>{if(g.opponent===t2){h2hCount++; if(g.teamScore>g.oppScore) h2hT1++; else h2hT2++;}});
+  t2Games.forEach(g=>{if(g.opponent===t1){h2hCount++; if(g.teamScore>g.oppScore) h2hT2++; else h2hT1++;}});
 
-  // Prognozė pagal bendrą vidurkį + H2H
-  let winner = t1AvgDiff>t2AvgDiff ? t1 : t2;
+  let winner = t1Avg>t2Avg ? t1 : t2;
   if(h2hT1>h2hT2) winner = t1;
   else if(h2hT2>h2hT1) winner = t2;
 
@@ -126,7 +115,7 @@ function showPrediction(){
     <p>${t1} Win %: ${(t1Wins/t1Games.length*100).toFixed(1)}%</p>
     <p>${t2} Win %: ${(t2Wins/t2Games.length*100).toFixed(1)}%</p>
     <p>Over/Under (>150 pts) ${t1}: ${(t1Over/t1Games.length*100).toFixed(1)}%, ${t2}: ${(t2Over/t2Games.length*100).toFixed(1)}%</p>
-    <p>Vidutinis taškų skirtumas: ${t1}: ${t1AvgDiff.toFixed(1)}, ${t2}: ${t2AvgDiff.toFixed(1)}</p>
+    <p>Vidutinis taškų skirtumas: ${t1}: ${t1Avg.toFixed(1)}, ${t2}: ${t2Avg.toFixed(1)}</p>
     <p>H2H: ${t1} ${h2hT1} - ${h2hT2} ${t2}</p>
     <p>Tikėtina laimėtoja: <b>${winner}</b></p>
   `;
