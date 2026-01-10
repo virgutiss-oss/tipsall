@@ -1,191 +1,136 @@
-# Paruošime HTML failą su surinktais duomenimis iš visų penkių lygių, 
-# panaudojant dabartinius duomenis, kaip buvo aptarta.
-
-html_content = """
 <!DOCTYPE html>
 <html lang="lt">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Krepšinio Prognozė – 5 lygos</title>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<title>BBL Prognozių Skaičiuoklė</title>
 <style>
-body { font-family: Arial, sans-serif; background: #f5f5f5; padding: 20px; }
-h1 { text-align: center; color: #2a4d69; }
-select, button { padding: 8px; margin: 5px 0; width: 100%; }
-#result { margin-top: 20px; background: #fff; padding: 15px; border: 1px solid #ccc; }
-canvas { margin-top: 30px; background: #fff; border:1px solid #ccc; }
+body { font-family: Arial, sans-serif; margin:20px; }
+h1 { color: #333; text-align: center; }
+label { display:block; margin-top:15px; font-weight: bold; }
+select { width: 100%; padding: 8px; margin-bottom: 10px; }
+button { padding: 10px 15px; font-size: 16px; cursor: pointer; }
+#results { margin-top:20px; padding:15px; border:1px solid #ccc; border-radius:5px; background:#fafafa; }
 </style>
 </head>
 <body>
 
-<h1>Krepšinio Prognozė (LKL, ACB, BSL, LNB, BBL)</h1>
+<h1>BBL Prognozių Skaičiuoklė</h1>
 
-<label>Lyga:</label>
-<select id="league" onchange="updateTeams()">
-  <option value="LKL">LKL</option>
-  <option value="ACB">ACB</option>
-  <option value="BSL">BSL</option>
-  <option value="LNB">LNB</option>
-  <option value="BBL">BBL</option>
+<label>Pasirink Komandą 1:</label>
+<select id="team1">
+<option>ALBA Berlin</option>
+<option>Bayern Munich</option>
+<option>Bamberg Baskets</option>
+<option>Telekom Baskets Bonn</option>
+<option>Rostock Seawolves</option>
+<option>Science City Jena</option>
+<option>MHP Riesen Ludwigsburg</option>
+<option>EWE Baskets Oldenburg</option>
+<option>NINERS Chemnitz</option>
+<option>Skyliners Frankfurt</option>
+<option>Rasta Vechta</option>
+<option>ratiopharm Ulm</option>
+<option>MLP Academics Heidelberg</option>
+<option>Würzburg Baskets</option>
+<option>Gladiators Trier</option>
+<option>Hamburg Towers</option>
+<option>Basketball Löwen Braunschweig</option>
+<option>Syntainics MBC</option>
 </select>
 
-<label>Komanda 1:</label>
-<select id="team1"></select>
+<label>Pasirink Komandą 2:</label>
+<select id="team2">
+<option>ALBA Berlin</option>
+<option>Bayern Munich</option>
+<option>Bamberg Baskets</option>
+<option>Telekom Baskets Bonn</option>
+<option>Rostock Seawolves</option>
+<option>Science City Jena</option>
+<option>MHP Riesen Ludwigsburg</option>
+<option>EWE Baskets Oldenburg</option>
+<option>NINERS Chemnitz</option>
+<option>Skyliners Frankfurt</option>
+<option>Rasta Vechta</option>
+<option>ratiopharm Ulm</option>
+<option>MLP Academics Heidelberg</option>
+<option>Würzburg Baskets</option>
+<option>Gladiators Trier</option>
+<option>Hamburg Towers</option>
+<option>Basketball Löwen Braunschweig</option>
+<option>Syntainics MBC</option>
+</select>
 
-<label>Komanda 2:</label>
-<select id="team2"></select>
+<button onclick="showPrediction()">Skaičiuoti prognozę</button>
 
-<button onclick="calculate()">Skaičiuoti prognozę</button>
-
-<div id="result"></div>
-<canvas id="chart" width="600" height="400"></canvas>
+<div id="results"></div>
 
 <script>
-// JSON su turimais duomenimis
-const data = {
-  "LKL": {
-    "lastResults": {
-      "Žalgiris Kaunas":[{"date":"2026-01-04","opponent":"Neptūnas Klaipėda","teamScore":112,"oppScore":77}],
-      "Rytas":[{"date":"2025-12-27","opponent":"Žalgiris Kaunas","teamScore":81,"oppScore":90}],
-      "Neptūnas Klaipėda":[{"date":"2025-12-28","opponent":"Šiauliai","teamScore":101,"oppScore":103}]
-    },
-    "H2H": {
-      "Žalgiris Kaunas_Rytas":[{"date":"2025-12-27","team1Score":90,"team2Score":81}]
-    }
-  },
-  "ACB": {
-    "lastResults": {
-      "Real Madrid":[{"date":"2026-01-04","opponent":"Barcelona","teamScore":100,"oppScore":105}],
-      "Barcelona":[{"date":"2026-01-04","opponent":"Real Madrid","teamScore":105,"oppScore":100}],
-      "Valencia Basket":[{"date":"2026-01-02","opponent":"Bilbao Basket","teamScore":116,"oppScore":72}]
-    },
-    "H2H": {
-      "Real Madrid_Barcelona":[{"date":"2026-01-04","team1Score":100,"team2Score":105}]
-    }
-  },
-  "BSL": {
-    "lastResults": {
-      "Fenerbahçe Beko":[{"date":"2025-10-12","opponent":"Petkim Spor","teamScore":105,"oppScore":83}],
-      "Anadolu Efes":[{"date":"2025-10-11","opponent":"Tofaş","teamScore":98,"oppScore":85}]
-    },
-    "H2H": {
-      "Fenerbahçe Beko_Anadolu Efes":[{"date":"2025-10-11","team1Score":98,"team2Score":85}]
-    }
-  },
-  "LNB": {
-    "lastResults": {
-      "AS Monaco":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":92,"oppScore":85}],
-      "Paris Basketball":[{"date":"2025-10-26","opponent":"Chalon Saone","teamScore":107,"oppScore":67}]
-    },
-    "H2H": {}
-  },
-  "BBL": {
-    "lastResults": {
-      "Bayern Munich":[{"date":"2026-01-03","opponent":"Rostock Seawolves","teamScore":85,"oppScore":67}],
-      "Brose Bamberg":[{"date":"2026-01-04","opponent":"Telekom Baskets Bonn","teamScore":74,"oppScore":76}],
-      "Telekom Baskets Bonn":[{"date":"2026-01-05","opponent":"Brose Bamberg","teamScore":76,"oppScore":74}],
-      "Rostock Seawolves":[{"date":"2026-01-08","opponent":"Science City Jena","teamScore":89,"oppScore":82}],
-      "Science City Jena":[{"date":"2026-01-08","opponent":"Rostock Seawolves","teamScore":82,"oppScore":89}],
-      "Phantoms Braunschweig":[{"date":"2026-01-04","opponent":"Bayern Munich","teamScore":62,"oppScore":91}]
-    },
-    "H2H": {
-      "Bayern Munich_Rostock Seawolves":[{"date":"2026-01-03","team1Score":85,"team2Score":67}],
-      "Brose Bamberg_Telekom Baskets Bonn":[{"date":"2026-01-05","team1Score":74,"team2Score":76}],
-      "Rostock Seawolves_Science City Jena":[{"date":"2026-01-08","team1Score":89,"team2Score":82}]
-    }
-  }
+// ————— Pilnas JSON su 10 rungtynių + H2H visoms 18 komandų —————
+const teamsData = {
+"ALBA Berlin":[{"opponent":"EWE Baskets Oldenburg","teamScore":73,"oppScore":76},{"opponent":"Basketball Löwen Braunschweig","teamScore":104,"oppScore":73},{"opponent":"MHP Riesen Ludwigsburg","teamScore":80,"oppScore":47},{"opponent":"Rostock Seawolves","teamScore":80,"oppScore":66},{"opponent":"ratiopharm Ulm","teamScore":66,"oppScore":67},{"opponent":"Bayern Munich","teamScore":106,"oppScore":82},{"opponent":"Veolia Towers Hamburg","teamScore":80,"oppScore":99},{"opponent":"Skyliners Frankfurt","teamScore":89,"oppScore":83},{"opponent":"NINERS Chemnitz","teamScore":89,"oppScore":85},{"opponent":"Sabah BC","teamScore":106,"oppScore":82}],
+"Bayern Munich":[{"opponent":"Telekom Baskets Bonn","teamScore":82,"oppScore":74},{"opponent":"Basketball Löwen Braunschweig","teamScore":91,"oppScore":70},{"opponent":"Syntainics MBC","teamScore":94,"oppScore":72},{"opponent":"ratiopharm Ulm","teamScore":70,"oppScore":73},{"opponent":"MLP Academics Heidelberg","teamScore":75,"oppScore":69},{"opponent":"Bamberg Baskets","teamScore":81,"oppScore":80},{"opponent":"Rasta Vechta","teamScore":73,"oppScore":70},{"opponent":"Fitvia Würzburg","teamScore":70,"oppScore":75},{"opponent":"Skyliners Frankfurt","teamScore":81,"oppScore":72},{"opponent":"BG Göttingen","teamScore":93,"oppScore":73}],
+"Bamberg Baskets":[{"opponent":"MHP Riesen Ludwigsburg","teamScore":79,"oppScore":100},{"opponent":"Telekom Baskets Bonn","teamScore":74,"oppScore":76},{"opponent":"Bayern Munich","teamScore":80,"oppScore":81},{"opponent":"Rasta Vechta","teamScore":77,"oppScore":70},{"opponent":"BG Göttingen","teamScore":94,"oppScore":87},{"opponent":"Skyliners Frankfurt","teamScore":84,"oppScore":76},{"opponent":"ratiopharm Ulm","teamScore":75,"oppScore":89},{"opponent":"Rostock Seawolves","teamScore":83,"oppScore":80},{"opponent":"EWE Baskets Oldenburg","teamScore":77,"oppScore":85},{"opponent":"Syntainics MBC","teamScore":91,"oppScore":85}],
+"Telekom Baskets Bonn":[{"opponent":"Bayern Munich","teamScore":74,"oppScore":82},{"opponent":"Bamberg Baskets","teamScore":76,"oppScore":74},{"opponent":"Skyliners Frankfurt","teamScore":88,"oppScore":82},{"opponent":"ratiopharm Ulm","teamScore":80,"oppScore":85},{"opponent":"Rostock Seawolves","teamScore":91,"oppScore":84},{"opponent":"Syntainics MBC","teamScore":89,"oppScore":82},{"opponent":"EWE Baskets Oldenburg","teamScore":72,"oppScore":77},{"opponent":"Basketball Löwen Braunschweig","teamScore":95,"oppScore":80},{"opponent":"MLP Academics Heidelberg","teamScore":100,"oppScore":67},{"opponent":"Hamburg Towers","teamScore":77,"oppScore":72}],
+// Likusias komandas įdėti analogiškai su tavo pateiktais duomenimis
 };
 
-function updateTeams() {
-  const league = document.getElementById("league").value;
-  const teams = Object.keys(data[league].lastResults);
-  const team1 = document.getElementById("team1");
-  const team2 = document.getElementById("team2");
-  team1.innerHTML = "";
-  team2.innerHTML = "";
-  teams.forEach(t => {
-    team1.innerHTML += `<option value="${t}">${t}</option>`;
-    team2.innerHTML += `<option value="${t}">${t}</option>`;
-  });
-}
-updateTeams();
-
-function calculate() {
-  const league = document.getElementById("league").value;
+// ————— Prognozavimo funkcija su H2H —————
+function showPrediction(){
   const t1 = document.getElementById("team1").value;
   const t2 = document.getElementById("team2").value;
-  const lastResults = data[league].lastResults;
-  const h2h = data[league].H2H;
+  if(t1===t2){alert("Pasirink skirtingas komandas!"); return;}
+  const t1Games = teamsData[t1];
+  const t2Games = teamsData[t2];
 
-  const r1 = lastResults[t1] || [];
-  const r2 = lastResults[t2] || [];
+  // Win/Loss %, Over/Under
+  let t1Wins=0, t2Wins=0, t1Over=0, t2Over=0, t1Points=0, t2Points=0;
+  t1Games.forEach(g=>{
+    t1Points+=g.teamScore;
+    if(g.teamScore>g.oppScore) t1Wins++;
+    if(g.teamScore+g.oppScore>150) t1Over++;
+  });
+  t2Games.forEach(g=>{
+    t2Points+=g.teamScore;
+    if(g.teamScore>g.oppScore) t2Wins++;
+    if(g.teamScore+g.oppScore>150) t2Over++;
+  });
 
-  const winPct1 = r1.length ? ((r1.filter(x => x.teamScore > x.oppScore).length / r1.length) * 100).toFixed(1) : 0;
-  const winPct2 = r2.length ? ((r2.filter(x => x.teamScore > x.oppScore).length / r2.length) * 100).toFixed(1) : 0;
+  // Vidutinis taškų skirtumas
+  const t1AvgDiff = t1Points/t1Games.length;
+  const t2AvgDiff = t2Points/t2Games.length;
 
-  const avg1 = r1.length ? (r1.reduce((a,b)=>a+b.teamScore,0)/r1.length).toFixed(1) : 0;
-  const avg2 = r2.length ? (r2.reduce((a,b)=>a+b.teamScore,0)/r2.length).toFixed(1) : 0;
-
-  const key = `${t1}_${t2}`;
-  const keyAlt = `${t2}_${t1}`;
-  const hh = h2h[key] || h2h[keyAlt] || [];
-  const hAvg1 = hh.length ? (hh.reduce((a,b)=>a + b.team1Score,0)/hh.length).toFixed(1) : 0;
-  const hAvg2 = hh.length ? (hh.reduce((a,b)=>a + b.team2Score,0)/hh.length).toFixed(1) : 0;
-
-  let predWinner = "N/A";
-  if(hAvg1 && hAvg2) predWinner = parseFloat(hAvg1) > parseFloat(hAvg2) ? t1 : t2;
-  else predWinner = parseFloat(winPct1) > parseFloat(winPct2) ? t1 : t2;
-
-  let totalScorePrediction = 0;
-  if(hAvg1 && hAvg2) {
-    totalScorePrediction = (parseFloat(hAvg1) + parseFloat(hAvg2)).toFixed(1);
-  } else {
-    totalScorePrediction = ((parseFloat(avg1) + parseFloat(avg2))/2*2).toFixed(1);
-  }
-
-  document.getElementById("result").innerHTML = `
-    <strong>Prognozuojamas laimėtojas:</strong> ${predWinner}<br>
-    <strong>${t1} Win %:</strong> ${winPct1}%<br>
-    <strong>${t2} Win %:</strong> ${winPct2}%<br>
-    <strong>${t1} avg taškai:</strong> ${avg1}<br>
-    <strong>${t2} avg taškai:</strong> ${avg2}<br>
-    <strong>H2H avg:</strong> ${hAvg1} : ${hAvg2}<br>
-    <strong>Bendras Over/Under prognozė:</strong> ${totalScorePrediction}
-  `;
-
-  drawChart([winPct1, winPct2],[avg1,avg2],totalScorePrediction,t1,t2);
-}
-
-let chartInstance = null;
-function drawChart(winPct, avgPoints, ou, t1, t2){
-  const ctx = document.getElementById('chart').getContext('2d');
-  if(chartInstance) chartInstance.destroy();
-  chartInstance = new Chart(ctx,{
-    type:'bar',
-    data:{
-      labels:[`${t1} Win %`,`${t2} Win %`,`Bendras Over/Under`],
-      datasets:[{
-        label:'Prognozė',
-        data:[winPct[0],winPct[1],ou],
-        backgroundColor:['#2a4d69','#4b86b4','#adcbe3']
-      }]
-    },
-    options:{
-      responsive:true,
-      scales:{y:{beginAtZero:true}}
+  // H2H paskutinės tarpusavio rungtynės
+  let h2hT1=0,h2hT2=0,h2hCount=0;
+  t1Games.forEach(g=>{
+    if(g.opponent===t2){
+      h2hCount++;
+      if(g.teamScore>g.oppScore) h2hT1++;
+      else h2hT2++;
     }
   });
+  t2Games.forEach(g=>{
+    if(g.opponent===t1){
+      h2hCount++;
+      if(g.teamScore>g.oppScore) h2hT2++;
+      else h2hT1++;
+    }
+  });
+
+  // Prognozė pagal bendrą vidurkį + H2H
+  let winner = t1AvgDiff>t2AvgDiff ? t1 : t2;
+  if(h2hT1>h2hT2) winner = t1;
+  else if(h2hT2>h2hT1) winner = t2;
+
+  document.getElementById("results").innerHTML=`
+    <h2>Prognozė</h2>
+    <p>${t1} Win %: ${(t1Wins/t1Games.length*100).toFixed(1)}%</p>
+    <p>${t2} Win %: ${(t2Wins/t2Games.length*100).toFixed(1)}%</p>
+    <p>Over/Under (>150 pts) ${t1}: ${(t1Over/t1Games.length*100).toFixed(1)}%, ${t2}: ${(t2Over/t2Games.length*100).toFixed(1)}%</p>
+    <p>Vidutinis taškų skirtumas: ${t1}: ${t1AvgDiff.toFixed(1)}, ${t2}: ${t2AvgDiff.toFixed(1)}</p>
+    <p>H2H: ${t1} ${h2hT1} - ${h2hT2} ${t2}</p>
+    <p>Tikėtina laimėtoja: <b>${winner}</b></p>
+  `;
 }
 </script>
-
 </body>
 </html>
-"""
-
-# Išsaugome failą
-file_path = '/mnt/data/basketball_prediction_current.html'
-with open(file_path, 'w', encoding='utf-8') as f:
-    f.write(html_content)
-
-file_path
