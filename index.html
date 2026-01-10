@@ -86,7 +86,7 @@ function updateTeams() {
 }
 updateTeams();
 
-// ————— Skaičiavimo logika —————
+// ————— Skaičiavimo logika su bendru Over/Under —————
 function calculate() {
   const league = document.getElementById("league").value;
   const t1 = document.getElementById("team1").value;
@@ -113,7 +113,13 @@ function calculate() {
   if(hAvg1 && hAvg2) predWinner = parseFloat(hAvg1) > parseFloat(hAvg2) ? t1 : t2;
   else predWinner = parseFloat(winPct1) > parseFloat(winPct2) ? t1 : t2;
 
-  const ou = ((parseFloat(avg1) + parseFloat(avg2))/2).toFixed(1);
+  // Bendras Over/Under
+  let totalScorePrediction = 0;
+  if(hAvg1 && hAvg2) {
+    totalScorePrediction = (parseFloat(hAvg1) + parseFloat(hAvg2)).toFixed(1);
+  } else {
+    totalScorePrediction = ((parseFloat(avg1) + parseFloat(avg2))/2*2).toFixed(1);
+  }
 
   document.getElementById("result").innerHTML = `
     <strong>Prognozuojamas laimėtojas:</strong> ${predWinner}<br>
@@ -122,13 +128,13 @@ function calculate() {
     <strong>${t1} avg taškai:</strong> ${avg1}<br>
     <strong>${t2} avg taškai:</strong> ${avg2}<br>
     <strong>H2H avg:</strong> ${hAvg1} : ${hAvg2}<br>
-    <strong>Over/Under prognozė:</strong> ${ou}
+    <strong>Bendras Over/Under prognozė:</strong> ${totalScorePrediction}
   `;
 
-  drawChart([winPct1, winPct2],[avg1,avg2],ou,t1,t2);
+  drawChart([winPct1, winPct2], [avg1, avg2], totalScorePrediction, t1, t2);
 }
 
-// ————— Grafiko funkcija su Chart.js —————
+// ————— Grafiko funkcija —————
 let chartInstance = null;
 function drawChart(winPct, avgPoints, ou, t1, t2){
   const ctx = document.getElementById('chart').getContext('2d');
@@ -136,7 +142,7 @@ function drawChart(winPct, avgPoints, ou, t1, t2){
   chartInstance = new Chart(ctx,{
     type:'bar',
     data:{
-      labels:[`${t1} Win %`,`${t2} Win %`,`Over/Under`],
+      labels:[`${t1} Win %`,`${t2} Win %`,`Bendras Over/Under`],
       datasets:[{
         label:'Prognozė',
         data:[winPct[0],winPct[1],ou],
